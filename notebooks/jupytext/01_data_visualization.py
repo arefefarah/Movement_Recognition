@@ -7,12 +7,14 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.13.1
+#       jupytext_version: 1.13.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
+
+# #### This notebook is for loading raw data of MotionDataset and visualization of data for all movements with different tools
 
 import pandas as pd
 import os
@@ -73,8 +75,6 @@ df_y = df_y.sub(ref_y,axis = 0)
 df = pd.concat([df_x, df_y], axis=1, join='inner')
 # -
 
-df.shape[0]
-
 Add one column
 
 # +
@@ -106,8 +106,6 @@ for i in timeflags:
 # df.iloc[3093:3211,df.columns.get_loc("Movement")] =20
 # df.iloc[3236:3391,df.columns.get_loc("Movement")] =21
 # -
-
-i[1]
 
 # ## Load Dataframe of DeepLabCut 
 
@@ -180,9 +178,6 @@ pca.fit(normalized_df)
 y = pca.fit_transform(normalized_df)
 df = pd.DataFrame(y, columns = ['pc1','pc2',"pc3","pc4"])
 # -
-
-
-
 # ### add one column to indicate time label of different movements
 
 # +
@@ -930,7 +925,7 @@ fig = px.scatter(
 fig.show()
 # -
 
-# ## Liklihood Distribution
+# ## plot Liklihood Distribution
 
 # +
 
