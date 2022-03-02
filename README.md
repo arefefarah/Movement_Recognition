@@ -1,4 +1,4 @@
-# project-template
+# My project
 
 # Goals for this repository
 
