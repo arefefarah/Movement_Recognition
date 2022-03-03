@@ -16,38 +16,26 @@
 # #### this notebook is for loading and preprocessing AMASS data to be used for model
 
 # +
-import pandas as pd
-import sys
-import os
-import sklearn
-import numpy as np
-import matplotlib.pyplot as plt
-import plotly.express as px
-import plotly
-import math
-from sklearn.decomposition import PCA
-import seaborn as sns
+sys.path.insert(0, '../')
+import movement_classifier.utils as utils
+
+
 from os.path import dirname, join as pjoin
-import scipy.io as sio
-sys.path.insert(0, '/home/arefeh/Motion-Project/My Project/my_project/utils')
-
-from DLC_functions import *
-from sklearn.preprocessing import MinMaxScaler
-# get some pytorch:
-import torch
-import torch.nn as nn
-from torch.nn import MaxPool1d
-from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
-
-# confusion matrix from sklearn
-from sklearn.metrics import confusion_matrix
-
-# to get some idea of how long stuff will take to complete:
+import os
+import sys
+import math
 import time
-
-# to see how unbalanced the data is:
 from collections import Counter
+
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import plotly.express as px
+from sklearn.preprocessing import MinMaxScaler
+
+
+
 # -
 
 # ### make dataset of AMASS data using Padding for equal length of timeseries
@@ -67,7 +55,7 @@ for s in subjects:
 #     print(s)
     data_dic = []
     file = "../data/01_raw/AMASS/F_amass_Subject_"+str(s)+".mat"
-    inf_dic = mat2dict(file)
+    inf_dic = utils.mat2dict(file)
     for i in range(21):
         name = "move_"+str(i)
         
@@ -109,7 +97,7 @@ for s in subjects:
     print(s)
     data_dic = []
     file = "../data/01_raw/AMASS/F_amass_Subject_{}.mat".format(s)
-    inf_dic = mat2dict(file)
+    inf_dic = utils.mat2dict(file)
     for i in range(21):
         name = "move_"+str(i)
         
@@ -182,7 +170,7 @@ for s in subjects:
     print(s)
     data_dic = []
     file = "../data/01_raw/AMASS/F_amass_Subject_{}.mat".format(s)
-    inf_dic = mat2dict(file)
+    inf_dic = utils.mat2dict(file)
     for i in range(21):
         name = "move_"+str(i)
         
@@ -263,7 +251,7 @@ for s in subjects:
     print(s)
     data_dic = []
     file = "../data/01_raw/AMASS/F_amass_Subject_{}.mat".format(s)
-    inf_dic = mat2dict(file)
+    inf_dic = utils.mat2dict(file)
     for i in range(21):
         name = "move_"+str(i)
         

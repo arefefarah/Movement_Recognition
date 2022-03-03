@@ -16,8 +16,15 @@
 
 # #### This notebook is for loading raw data of MotionDataset and visualization of data for all movements with different tools
 
-import pandas as pd
+# +
+sys.path.insert(0, '../')
+import movement_classifier.utils as utils
+import movement_classifier.utils as utils
+
+from os.path import dirname, join as pjoin
 import os
+
+
 import sklearn
 import numpy as np
 import matplotlib.pyplot as plt
@@ -25,14 +32,13 @@ import plotly.express as px
 import plotly
 from sklearn.decomposition import PCA
 import seaborn as sns
-from os.path import dirname, join as pjoin
 import scipy.io as sio
-from utils_fun import *
+import pandas as pd
 
 # +
 
 mat_file = "F_v3d_Subject_1.mat"
-sample = mat2dict(mat_file)
+sample = utils.mat2dict(mat_file)
 sample.keys()
 # -
 

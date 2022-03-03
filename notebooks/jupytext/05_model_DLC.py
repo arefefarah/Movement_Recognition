@@ -1,7 +1,7 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,jupytext//py:light
+#     formats: ipynb,jupytext//py
 #     text_representation:
 #       extension: .py
 #       format_name: light
@@ -13,55 +13,57 @@
 #     name: python3
 # ---
 
-# #### In this notebook, we train a neural network on AMASS output to get an acceptable accuracy in movement classification problem
+# +
+sys.path.insert(0, '../')
+import movement_classifier.utils as utils
 
-import pandas as pd
-import sys
-import os
-import sklearn
-import numpy as np
-import matplotlib.pyplot as plt
-import plotly.express as px
-import plotly
-from sklearn.decomposition import PCA
-import seaborn as sns
+
 from os.path import dirname, join as pjoin
-import scipy.io as sio
-sys.path.insert(0, '/home/arefeh/Motion-Project/My Project/my_project/utils')
-from DLC_functions import *
+import os
+import sys
+import math
+import time
+from collections import Counter
+
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import plotly.express as px
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
-# get some pytorch:
+from sklearn.metrics import confusion_matrix
 import torch
 import torch.nn as nn
-from torch.nn import MaxPool1d
+
+
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-# confusion matrix from sklearn
-from sklearn.metrics import confusion_matrix
-# to get some idea of how long stuff will take to complete:
-import time
-# to see how unbalanced the data is:
-from collections import Counter
+
+import torch.utils.data as data
+# -
 
 # ### Load Data
 
-Input_array = np.load("../data/03_processed/AMASS_velocity/Input_model.npy")
-Labels = np.load("../data/03_processed/AMASS_velocity/labels.npy")
-Subjects = np.load("../data/03_processed/AMASS_velocity/subjects.npy")
-Labels_name = np.load("../data/03_processed/AMASS_velocity/labels_name.npy")
+Input_array = np.load("../data/03_processed/padding_deletedrandom/Input_model.npy")
+Labels = np.load("../data/03_processed/padding_deletedrandom/labels.npy")
+Subjects = np.load("../data/03_processed/padding_deletedrandom/subjects.npy")
+Labels_name = np.load("../data/03_processed/padding_deletedrandom/labels_name.npy")
 Labels_name.shape
 
-Input_array = np.load("../data/03_processed/AMASS_resamplingvelocity/Input_model.npy")
-Labels = np.load("../data/03_processed/AMASS_resamplingvelocity/labels.npy")
-Subjects = np.load("../data/03_processed/AMASS_resamplingvelocity/subjects.npy")
-Labels_name = np.load("../data/03_processed/AMASS_resamplingvelocity/labels_name.npy")
-Labels_name.shape
+Input_array = np.load("../data/03_processed/resampling_deletedrandom/Input_model.npy")
+Labels = np.load("../data/03_processed/resampling_deletedrandom/labels.npy")
+Subjects = np.load("../data/03_processed/resampling_deletedrandom/subjects.npy")
+Labels_name = np.load("../data/03_processed/resampling_deletedrandom/labels_name.npy")
+Input_array.shape
 
 plt.figure(figsize=(8,6))
 plt.hist(Labels_name)
 plt.xticks(rotation=90)
 plt.show()
 
+
+np.unique(Labels_name)
 
 # h = np.histogram(Labels_name, np.unique(Labels_name))
 plt.figure(figsize=(8,6))
@@ -116,6 +118,8 @@ print(motion_test[idx][0].shape, Labels_name[motion_test[idx][1]])
 
 # -
 
+len(motion_test)
+
 # ### “1D” CNN in pytorch expects a 3D tensor as input: BxCxT
 
 # +
@@ -135,28 +139,40 @@ test_loader  = DataLoader(dataset=motion_test, batch_size=batch_size, shuffle=Fa
 
 # -
 
+num_classes
+
+
 # ### Specific Model
 
+# +
 class Mov1DCNN(nn.Module):
     def __init__(self):
         
         super(Mov1DCNN, self).__init__()
 
         self.layer1 = nn.Sequential(
-          nn.Conv1d(in_channels=208, out_channels=124, kernel_size=6, stride=2),
+          nn.Conv1d(in_channels=28, out_channels=250, kernel_size=6, stride=2),
           nn.ReLU(),
           nn.MaxPool1d(kernel_size=2, stride=2))
 
         self.layer2 = nn.Sequential(
-          nn.Conv1d(in_channels=124, out_channels=31, kernel_size=1),
+          nn.Conv1d(in_channels=250, out_channels=124, kernel_size=2),
           nn.ReLU(),
           nn.MaxPool1d(kernel_size=2, stride=2))
 
+        # self.layer3 = nn.Sequential(
+        #   nn.Conv1d(in_channels=124, out_channels=22, kernel_size=1),
+        #   nn.ReLU(),
+        #   nn.MaxPool1d(kernel_size=2, stride=2))
+
         self.dropout1 = nn.Dropout(p=0.2)
-        self.fc1 = nn.Linear(496, 2000)  # fix dimensions
+        self.fc1 = nn.Linear(8432, 2000)  # fix dimensions
         self.nl = nn.ReLU()
         self.dropout2 = nn.Dropout(p=0.2)
-        self.fc2 = nn.Linear(2000, num_classes)
+        self.fc2 = nn.Linear(2000, 1000)
+        self.n2 = nn.ReLU()
+        self.dropout3 = nn.Dropout(p=0.2)
+        self.fc3 = nn.Linear(1000, num_classes)
 
     def forward(self, x):
         out = self.layer1(x)
@@ -169,10 +185,16 @@ class Mov1DCNN(nn.Module):
         out = self.nl(out)
         out = self.dropout2(out)
         out = self.fc2(out)
+        out = self.n2(out)
+        out = self.dropout3(out)
+        out = self.fc3(out)
         # pick the most likely class:
         out = nn.functional.log_softmax(out, dim=1)
     
         return out
+
+    
+
 
 
 # +
@@ -181,7 +203,6 @@ device = "cpu"
 
 # create the model object:
 model = Mov1DCNN()
-
 
 # loss and optimizer:
 criterion = nn.CrossEntropyLoss()
@@ -248,11 +269,10 @@ with torch.no_grad():
 
     print(f"Test Accuracy of the model on the test moves: {(correct / total)*100:.3f}%")
 
+
 # +
 # chance level: 3.5%
 # -
-
-
 
 def plotConfusionMatrix(real_labels, predicted_labels, label_names):
     real_labels = [int(x) for x in real_labels]
@@ -269,22 +289,30 @@ def plotConfusionMatrix(real_labels, predicted_labels, label_names):
     return(cm)
 
 
-# # padding with velocity 77% acc
+# +
+# list(Labels_name)
+# -
 
+# ## Resampling delete random motions with velocity  71% acc
 #
-name_labels = np.unique(Labels_name)
-cm = plotConfusionMatrix(real_labels, predicted_labels, name_labels)
-
-# # resampling with velocity 74% acc
 
 name_labels = np.unique(Labels_name)
 cm = plotConfusionMatrix(real_labels, predicted_labels, name_labels)
 
-# # Truncation acc 30 %
+# ## padding delete random motions with velocity  70% acc
+#
 
-# # Padding acc 75 %
+name_labels = np.unique(Labels_name)
+cm = plotConfusionMatrix(real_labels, predicted_labels, name_labels)
+
+# ## Result of Resampling  66% acc
+# 3060 data samples,
+# 30% for test , test acc = 70%,
+# 20% for test, test acc = 75%,
+# 4200 samples  66%
 
 # +
+# 22 subjects 2333 samples (34= min length)
 
 name_labels = np.unique(Labels_name)
 cm = plotConfusionMatrix(real_labels, predicted_labels, name_labels)
@@ -330,17 +358,6 @@ cm = plotConfusionMatrix(real_labels, predicted_labels, name_labels)
 ## regualriztion 66 % acc
 name_labels = np.unique(Labels_name)
 cm = plotConfusionMatrix(real_labels, predicted_labels, name_labels)
-
-name_labels
-
-name_labels
-
-np.unique(predicted_labels)
-
-Labels_name[motion_test[idx][1]]
-
-motion_test
-
 
 
 # ### try different kernel sizes

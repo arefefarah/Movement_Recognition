@@ -1,7 +1,7 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,jupytext//py:light
+#     formats: ipynb,jupytext//py
 #     text_representation:
 #       extension: .py
 #       format_name: light
@@ -15,33 +15,35 @@
 
 # #### In this notebook, we train a neural network on AMASS output to get an acceptable accuracy in movement classification problem
 
-import pandas as pd
-import sys
-import os
-import sklearn
-import numpy as np
-import matplotlib.pyplot as plt
-import plotly.express as px
-import plotly
-from sklearn.decomposition import PCA
-import seaborn as sns
+# +
+sys.path.insert(0, '../')
+import movement_classifier.utils as utils
+
+
 from os.path import dirname, join as pjoin
-import scipy.io as sio
-sys.path.insert(0, '/home/arefeh/Motion-Project/My Project/my_project/utils')
-from DLC_functions import *
+import os
+import sys
+import math
+import time
+from collections import Counter
+
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import plotly.express as px
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
-# get some pytorch:
+from sklearn.metrics import confusion_matrix
 import torch
 import torch.nn as nn
-from torch.nn import MaxPool1d
+
+
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-# confusion matrix from sklearn
-from sklearn.metrics import confusion_matrix
-# to get some idea of how long stuff will take to complete:
-import time
-# to see how unbalanced the data is:
-from collections import Counter
+
+import torch.utils.data as data
+# -
 
 # ### Load Data
 

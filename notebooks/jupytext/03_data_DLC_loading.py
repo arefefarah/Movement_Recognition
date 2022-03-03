@@ -1,7 +1,7 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,jupytext//py:light
+#     formats: ipynb,jupytext//py
 #     text_representation:
 #       extension: .py
 #       format_name: light
@@ -17,23 +17,26 @@
 
 # ## Data Loading....
 
-import pandas as pd
-import sys
+# +
+sys.path.insert(0, '../')
+import movement_classifier.utils as utils
+
+
+
+from os.path import dirname, join as pjoin
 import os
-import sklearn
-import numpy as np
+
+import dlc2kinematics
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import plotly.express as px
 import plotly
 from sklearn.decomposition import PCA
-import math
 import seaborn as sns
-from os.path import dirname, join as pjoin
 import scipy.io as sio
-sys.path.insert(0, '/home/arefe/My Project/my_project/utils')
-from DLC_functions import mat2dict
-from DLC_functions import *
-import dlc2kinematics
+
+# -
 
 # ### Load Mat files
 
@@ -72,7 +75,7 @@ all_motions = {}
 
 for f in mat_files:
 
-    inf_dic = mat2dict("../data/01_raw/F_Subjects/{}".format(f))
+    inf_dic = utils.mat2dict("../data/01_raw/F_Subjects/{}".format(f))
     m = inf_dic["move"]
     motions_list = m["motions_list"]
     timelabels = m["flags30"]
@@ -104,7 +107,7 @@ p = 0
 min_length = []
 for s in subjects:
 #     file= [filename for filename in os.listdir("../data/01_raw/CSV_files") if filename.startswith("F_PG1_Subject_{}_".format(s))]
-    inf_dic = mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
+    inf_dic = utils.mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
     m = inf_dic["move"]
 
     timeflags = m["flags30"]
@@ -160,7 +163,7 @@ for s in subjects:
     df = pd.concat([df_x, df_y], axis=1, join='inner')
     
     # Add column of movements
-    inf_dic = mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
+    inf_dic = utils.mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
     m = inf_dic["move"]
     motions_list = m["motions_list"]
     timeflags = m["flags30"]
@@ -216,7 +219,7 @@ for s in subjects:
     df = pd.concat([df_x, df_y], axis=1, join='inner')
     
     # Add column of movements
-    inf_dic = mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
+    inf_dic = utils.mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
     m = inf_dic["move"]
     motions_list = m["motions_list"]
 #           b = [0]*df.shape[0]
@@ -333,7 +336,7 @@ for s in subjects:
     df = pd.concat([df_x, df_y], axis=1, join='inner')
     
     # Add column of movements
-    inf_dic = mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
+    inf_dic = utils.mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
     m = inf_dic["move"]
     motions_list = m["motions_list"]
 #           b = [0]*df.shape[0]
@@ -430,7 +433,7 @@ p = 0
 max_length = []
 for s in subjects:
 #     file= [filename for filename in os.listdir("../data/01_raw/CSV_files") if filename.startswith("F_PG1_Subject_{}_".format(s))]
-    inf_dic = mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
+    inf_dic = utils.mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
     m = inf_dic["move"]
 
     timeflags = m["flags30"]
@@ -476,7 +479,7 @@ for s in subjects:
     df = pd.concat([df_x, df_y], axis=1, join='inner')
     
     # Add column of movements
-    inf_dic = mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
+    inf_dic = utils.mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
     m = inf_dic["move"]
     motions_list = m["motions_list"]
     timeflags = m["flags30"]
@@ -538,7 +541,7 @@ all_motions = {}
 
 for f in mat_files:
 
-    inf_dic = mat2dict("../data/01_raw/F_Subjects/{}".format(f))
+    inf_dic = utils.mat2dict("../data/01_raw/F_Subjects/{}".format(f))
     m = inf_dic["move"]
     motions_list = list(m["motions_list"])
     index = [idx for idx, element in enumerate(motions_list) if element.endswith("_rm")]
@@ -572,7 +575,7 @@ p = 0
 min_length = []
 for s in subjects:
 #     file= [filename for filename in os.listdir("../data/01_raw/CSV_files") if filename.startswith("F_PG1_Subject_{}_".format(s))]
-    inf_dic = mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
+    inf_dic = utils.mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
     m = inf_dic["move"]
     motions_list = list(m["motions_list"])
     index = [idx for idx, element in enumerate(motions_list) if element.endswith("_rm")]
@@ -638,7 +641,7 @@ for s in subjects:
         df[name] = daa
     
     # Add column of movements
-    inf_dic = mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
+    inf_dic = utils.mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
     m = inf_dic["move"]
     motions_list = list(m["motions_list"])
     index = [idx for idx, element in enumerate(motions_list) if element.endswith("_rm")]
@@ -725,7 +728,7 @@ all_motions = {}
 
 for f in mat_files:
 
-    inf_dic = mat2dict("../data/01_raw/F_Subjects/{}".format(f))
+    inf_dic = utils.mat2dict("../data/01_raw/F_Subjects/{}".format(f))
     m = inf_dic["move"]
     motions_list = list(m["motions_list"])
     for idx, element in enumerate(motions_list):
@@ -764,7 +767,7 @@ p = 0
 max_length = []
 for s in subjects:
 #     file= [filename for filename in os.listdir("../data/01_raw/CSV_files") if filename.startswith("F_PG1_Subject_{}_".format(s))]
-    inf_dic = mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
+    inf_dic = utils.mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
     m = inf_dic["move"]
 
     motions_list = list(m["motions_list"])
@@ -836,7 +839,7 @@ for s in subjects:
         
         
     # Add column of movements
-    inf_dic = mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
+    inf_dic = utils.mat2dict("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(s))
     m = inf_dic["move"]
     motions_list = list(m["motions_list"])
     for idx, element in enumerate(motions_list):

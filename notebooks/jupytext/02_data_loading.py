@@ -1,7 +1,7 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,jupytext//py:light
+#     formats: ipynb,jupytext//py
 #     text_representation:
 #       extension: .py
 #       format_name: light
@@ -15,18 +15,26 @@
 
 # ## Data Loading....
 
-import pandas as pd
+# +
+sys.path.insert(0, '../')
+import movement_classifier.utils as utils
+import movement_classifier.utils as utils
+
+
+from os.path import dirname, join as pjoin
 import os
-import sklearn
-import numpy as np
+
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import plotly.express as px
 import plotly
 from sklearn.decomposition import PCA
 import seaborn as sns
-from os.path import dirname, join as pjoin
 import scipy.io as sio
-from utils_fun import *
+
+# -
 
 # ### Load Mat files
 
@@ -43,7 +51,7 @@ mat_files
 all_motions = {}
 # all_timelabels = {}
 for f in mat_files:
-    inf_dic = mat2dict("F_Subjects_1_45/{}".format(f))
+    inf_dic = utils.mat2dict("F_Subjects_1_45/{}".format(f))
     m = inf_dic["move"]
     motions_list = m["motions_list"]
     timelabels = m["flags30"]
@@ -84,7 +92,7 @@ for filename in os.listdir("CSV_files"):
             df_y = df_y.sub(ref_y,axis = 0)
             df = pd.concat([df_x, df_y], axis=1, join='inner')
             # Add column of movements
-            inf_dic = mat2dict("F_Subjects_1_45/F_v3d_Subject_{}.mat".format(s))
+            inf_dic = utils.mat2dict("F_Subjects_1_45/F_v3d_Subject_{}.mat".format(s))
             m = inf_dic["move"]
             motions_list = m["motions_list"]
             timeflags = m["flags30"]
