@@ -15,6 +15,8 @@ from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
+from sklearn import preprocessing
+from scipy.interpolate import CubicSpline
 import scipy.io as sio
 import torch
 import torch.nn as nn
@@ -23,6 +25,52 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
 
+def mat2dict(filename):
+    """Converts MoVi mat files to a python nested dictionary.
+    This makes a cleaner representation compared to sio.loadmat
+    Arguments:
+        filename {str} -- The path pointing to the .mat file which contains
+        MoVi style mat structs
+    Returns:
+        dict -- A nested dictionary similar to the MoVi style MATLAB struct
+    """
+    # Reading MATLAB file
+    data = sio.loadmat(filename, struct_as_record=False, squeeze_me=True)
+
+    # Converting mat-objects to a dictionary
+    for key in data:
+        if key != "__header__" and key != "__global__" and key != "__version__":
+            if isinstance(data[key], sio.matlab.mio5_params.mat_struct):
+                data_out = matobj2dict(data[key])
+    return data_out
+
+def matobj2dict(matobj):
+    """A recursive function which converts nested mat object
+    to a nested python dictionaries
+    Arguments:
+        matobj {sio.matlab.mio5_params.mat_struct} -- nested mat object
+    Returns:
+        dict -- a nested dictionary
+    """
+    ndict = {}
+    for fieldname in matobj._fieldnames:
+        attr = matobj.__dict__[fieldname]
+        if isinstance(attr, sio.matlab.mio5_params.mat_struct):
+            ndict[fieldname] = matobj2dict(attr)
+        elif isinstance(attr, np.ndarray) and fieldname == "move":
+            for ind, val in np.ndenumerate(attr):
+                ndict[
+                    fieldname
+                    + str(ind).replace(",", "").replace(")", "").replace("(", "_")
+                    ] = matobj2dict(val)
+        elif fieldname == "skel":
+            tree = []
+            for ind in range(len(attr)):
+                tree.append(matobj2dict(attr[ind]))
+            ndict[fieldname] = tree
+        else:
+            ndict[fieldname] = attr
+    return ndict
 
 def timelength_loader(dir):
     subject_files = []
@@ -41,7 +89,7 @@ def timelength_loader(dir):
             name= name.split("_")
             subjects.append(name[-1])
             
-            inf_dic = utils.mat2dict(os.path.join(dir, filename))
+            inf_dic = mat2dict(os.path.join(dir, filename))
             m = inf_dic["move"]
             motions_list = m["motions_list"]
             timelabels = m["flags30"]
@@ -112,7 +160,7 @@ def csvSubject_loader(dir,min_length,max_length,method = "padding"):
         
         
             # Add column of movements
-            inf_dic = utils.mat2dict(os.path.join("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(name)))
+            inf_dic = mat2dict(os.path.join("../data/01_raw/F_Subjects/F_v3d_Subject_{}.mat".format(name)))
             m = inf_dic["move"]
             motions_list = list(m["motions_list"])
             for idx, element in enumerate(motions_list):
@@ -120,9 +168,15 @@ def csvSubject_loader(dir,min_length,max_length,method = "padding"):
                     motions_list[idx] = "crossarms"
                 if element.startswith("jumping"):
                     motions_list[idx] = "jumping_jacks"
-            index = [idx for idx, element in enumerate(motions_list) if element.endswith("_rm")]
             timeflags = list(m["flags30"])
-            
+            # indices = np.where(motions_list.endswith("_rm"))
+            # for i in indices:
+            #     motions_list.pop()
+            index = [idx for idx, element in enumerate(motions_list) if element.endswith("_rm")]        
+            for d in range(len(index)):
+                motions_list.pop(index[d])
+                timeflags.pop(index[d])
+            index = [idx for idx, element in enumerate(motions_list) if element=="punching_rm"]        
             for d in range(len(index)):
                 motions_list.pop(index[d])
                 timeflags.pop(index[d])
@@ -144,7 +198,7 @@ def csvSubject_loader(dir,min_length,max_length,method = "padding"):
                         val_arry = np.pad(x, (0, N), 'constant')
                         list_arrays.append(val_arry)
                     m =np.array(list_arrays)
-                    print(m.shape)
+                    # print(m.shape)
                     all_data.append(m)
 #############
             if method == "interpolation":
@@ -164,7 +218,7 @@ def csvSubject_loader(dir,min_length,max_length,method = "padding"):
                         ys = cs(xs)
                         list_arrays.append(ys)
                     m =np.array(list_arrays)
-                    print(m.shape)
+                    # print(m.shape)
                     all_data.append(m)
 
 #############
@@ -197,6 +251,7 @@ def csvSubject_loader(dir,min_length,max_length,method = "padding"):
             
             sub_info.append(np.array(all_data))  
 
+    print("all Dataframs have been created!")
     return(sub_info,movement_name_list,subjects)
 
 
@@ -231,3 +286,26 @@ def save_data(sub_info, movement_name_list,subjects, method = "padding"):
         np.save("../data/03_processed/interpolation/labels_name.npy", motion_name)
         np.save("../data/03_processed/interpolation/labels.npy", motion_num)
         np.save("../data/03_processed/interpolation/subjects.npy", subjects)
+    if method == "frequency":
+        np.save("../data/03_processed/frequency/input_model.npy", final_data)
+        np.save("../data/03_processed/frequency/labels_name.npy", motion_name)
+        np.save("../data/03_processed/frequency/labels.npy", motion_num)
+        np.save("../data/03_processed/frequency/subjects.npy", subjects)
+    print("all Dataframes have been saved properly")
+
+
+
+def load_data_dict(dir):
+    """Loads numpy data files from a folder and assigns to dict entries based on filename.
+    
+    Because we return on the first loop iteration, this only loads files in the top-level 
+    directory `dir`, not from subdirectories.
+    """
+    data = dict()
+    for _, _, filenames in os.walk(dir):
+        for filename in filenames:
+            name, ext = os.path.splitext(filename)
+            if ext == '.npy':
+                data[name] = np.load(os.path.join(dir, filename))
+
+        return data

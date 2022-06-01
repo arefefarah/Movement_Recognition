@@ -18,6 +18,9 @@ from sklearn.decomposition import PCA
 from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
+import rsatoolbox.data as rsd 
+import rsatoolbox
+from sklearn.manifold import TSNE
 import seaborn as sns
 import scipy.io as sio
 import torch
@@ -49,7 +52,7 @@ class Mov1DCNN(nn.Module):
         self.fc1 = nn.Linear(9672, 2000)  
         self.fc2 = nn.Linear(2000, 1000)
         # num_classes = 21
-        self.fc3 = nn.Linear(1000, 21)
+        self.fc3 = nn.Linear(1000, 20)
 
     def forward(self, x):
         out = self.layer1(x)
@@ -74,14 +77,14 @@ class Mov1DCNN(nn.Module):
 
 
 class MotionDataset(Dataset):
-    def __init__(self, train=True, data_dict = data_dict ):
+    def __init__(self, data_dict,train=True):
         self.input_dict = data_dict
 #         self.subjects = Subjects
         
         self.motions_train, self.motions_test, self.labels_train, self.labels_test = train_test_split(self.input_dict['input_model'],
                                                                         self.input_dict['labels'],test_size=0.33, random_state=42)
         
-        
+
         if train:
             self.labels = self.labels_train
             self.input_array = self.motions_train
@@ -100,6 +103,8 @@ class MotionDataset(Dataset):
         sample = (np.float32(np.squeeze(self.input_array[idx,:,:])), self.labels[idx])
 
         return sample
+    
+    
 
 
 
@@ -117,14 +122,21 @@ class Run_model():
         self.num_classes = np.unique(input_dict['labels_name']).shape[0]
         self.batch_size = 100
         self.input_dict = input_dict
-        motion_train = MotionDataset(train=True, data_dict = self.input_dict )
-        motion_test = MotionDataset(train=False, data_dict = self.input_dict)
+        self.motion_train = MotionDataset(data_dict = self.input_dict,train=True )
+        self.motion_test = MotionDataset(data_dict = self.input_dict,train=False)
         # Data loader
-        self.train_loader = DataLoader(dataset= motion_train, batch_size=self.batch_size, shuffle=True)
-        self.test_loader  = DataLoader(dataset=motion_test, batch_size=self.batch_size, shuffle=False)
+        self.train_loader = DataLoader(dataset= self.motion_train, batch_size=self.batch_size, shuffle=True)
+        self.test_loader  = DataLoader(dataset=self.motion_test, batch_size=self.batch_size, shuffle=False)
+        self.activation = {}
+        self.le = preprocessing.LabelEncoder()
+        self.le.fit(self.input_dict['labels_name'])
+        # print(np.unique(input_dict['labels_name']))
+        # print(np.unique(vars(self.motion_test)["labels"]))
+        # self.test_labels_name = le.inverse_transform(vars(self.motion_test)["labels"])
+        # self.train_labels_name =  le.inverse_transform(vars(self.motion_train)["labels"])
+        
 
     def train(self):
-        # motion_train = MotionDataset(train=True, data_dict = self.input_dict )
         total_step = len(self.train_loader)
         loss_list = []
         acc_list = []
@@ -172,13 +184,13 @@ class Run_model():
 
     def test(self):
         self.model.eval()
-        self.real_labels, self.predicted_labels = [], []
+        self.real_test_labels, self.predicted_labels = [], []
         with torch.no_grad():
             correct = 0
             total = 0
             for motions, labels in self.test_loader:
                 motions, labels = motions.to(self.device), labels.to(self.device)
-                self.real_labels += list(labels)
+                self.real_test_labels += list(labels)
                 outputs = self.model(motions)
                 _, predicted = torch.max(outputs.data, 1)
                 self.predicted_labels += list(predicted)
@@ -187,19 +199,134 @@ class Run_model():
 
         print(f"Test Accuracy of the model on the test moves: {(correct / total)*100:.3f}%")
 
-    
+    def layer_extractor(self):
+        def get_activation(name):
+            def hook(model, input, output):
+                self.activation[name] = output.detach()
+            return hook
+
+        self.model.fc1.register_forward_hook(get_activation(name = 'fc1'))
+        self.model.fc2.register_forward_hook(get_activation(name ='fc2'))
+        self.model.fc3.register_forward_hook(get_activation(name = 'fc3'))
+        d =vars(self.motion_test)
+        x = d["input_array"]
+        output = self.model(torch.Tensor(x))
+        self.activation["input"] = torch.Tensor(x)
+        labels_test_name = self.le.inverse_transform(self.real_test_labels)
+        return self.activation,labels_test_name
+
+    def save_layerOutput(self):
+        np.save("../data/03_processed/test_input.npy", self.activation["input"])
+        np.save("../data/03_processed/fc1-out.npy", self.activation["fc1"])
+        np.save("../data/03_processed/fc2-out.npy", self.activation["fc2"])
+        np.save("../data/03_processed/fc3-out.npy", self.activation["fc3"])
+
+
+    def plotRDM(self,plot_input = False):
+        self.movements = np.unique(vars(self.motion_test)["labels"])
+        conds = self.movements
+
+        def avg_movements(data):
+            for m in self.movements:
+                selected_movements = np.where(self.real_test_labels == m)
+            # print(selected_movements)
+                Data = np.dstack(data[selected_movements,:])
+                # print("dstack",Data.shape)
+                if m== self.movements[0]:
+                    data_all_movement = np.dstack(np.mean(Data, axis = 0))
+                else:
+                    B = np.dstack(np.mean(Data, axis = 0))
+                    data_all_movement = np.concatenate([data_all_movement,B])
+
+            return(data_all_movement)
+        
+        #plot rdm for input layer
+        if plot_input:          
+            # shape = (1,20,28,554)
+            d =vars(self.motion_test)
+            inputdata = d["input_array"]
+            # print("data shape", inputdata.shape)
+            Data = avg_movements(inputdata)
+            Data = Data.reshape(20,Data.shape[1]*Data.shape[2])
+            obs_des = {"conds":conds}
+            des = {'subj': all}
+            data = rsd.Dataset(measurements=Data,
+                                descriptors=des,
+                                obs_descriptors=obs_des
+                                )
+            title = "Input for all subjects"
+            rdm = rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None)
+            fig = sns.clustermap(rdm.get_matrices().reshape(20,20), figsize= (6,6))
+        #plot rdm for layers
+        else:
+            
+            interest_layers = ["fc1","fc2","fc3"]
+            for l in interest_layers:
+                data = self.activation[l]
+                # print("data shape", data.shape)
+                Data = avg_movements(data.detach().numpy())
+                Data = Data.reshape(20,Data.shape[1]*Data.shape[2])
+                obs_des = {"conds":conds}
+                des = {'subj': all}
+                data = rsd.Dataset(measurements=Data,
+                                    descriptors=des,
+                                    obs_descriptors=obs_des
+                                    )
+
+                title = "output of {} layer".format(l)+" for all subjects"
+                rdm = rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None)
+                fig = sns.clustermap(rdm.get_matrices().reshape(20,20), figsize= (6,6))
+                plt.show()
+            # fig.savefig('../reports/figures/allsubjects_{}_rdm.png'.format(layer), bbox_inches='tight', dpi=300) 
+
+        # fig.savefig('../reports/figures/allsubjects_input_rdm.png', bbox_inches='tight', dpi=300)
+
+
+
+
     def plotConfusionMatrix(self):
-        self.real_labels = [int(x) for x in self.real_labels]
+        self.real_labels = [int(x) for x in self.real_test_labels]
         self.predicted_labels = [int(x) for x in self.predicted_labels]
-        labels_name = np.unique(self.input_dict['labels_name'])
+        labels_unique = np.unique(self.real_test_labels)
+        labels_name = self.le.inverse_transform(labels_unique)
         tick_names = [a.replace("_", " ") for a in labels_name]
-        cm = confusion_matrix(self.real_labels, self.predicted_labels, normalize='true')
+        cm = confusion_matrix(self.real_labels, self.predicted_labels,labels = labels_unique,normalize='true')
         plt.figure(figsize=(8,10))
         plt.imshow(cm)
+
+#         ax.set_xticklabels([''] + labels)
+#         ax.set_yticklabels([''] + labels)
         plt.xticks(range(len(tick_names)),tick_names, rotation=90)
         plt.yticks(range(len(tick_names)),tick_names)
         plt.xlabel('predicted move')
         plt.ylabel('real move')
         plt.show()
         return(cm)
+
+
+    def plot_tsne(self,layer,perplexity = 30, iter = 2000 ):
+        u_labels = np.unique(self.data_dict["labels_name"])
+        model = TSNE(n_components=2, random_state=1,learning_rate=100,perplexity=perplexity, n_iter=iter)
+        if layer == "input":
+            d =vars(self.motion_test)
+            inputdata = d["input_array"]
+            input_data = inputdata.reshape(inputdata.shape[0],inputdata.shape[1]*inputdata.shape[2])
+        else:
+            input_data = self.visualization[layer]
+        tsne_data = model.fit_transform(input_data)
+        cmp = ["#00FFFF", "#0000FF","#8A2BE2","#EE3B3B","#7FFF00","#EE7621","#FF1493","#FFD700","#8B2252","#FF6A6A",
+        "#BFEFFF","#FFBBFF","#FFB5C5","#00CD66","#008080","#8B8B00","#CDBA96","#8B3626","#8B8989","#5E2612"]
+        plt.figure(num=1, figsize=(4, 2), dpi=500, facecolor='w', edgecolor='w')
+        i=0
+        for ul in u_labels:
+            # print(ul)
+            plt.scatter(tsne_data[data_dict["labels_name"]==ul,0], tsne_data[data_dict["labels_name"]==ul, 1],label=ul,s=5,c=cmp[i],cmap=cmp)
+            i+=1
+        plt.axis('tight')
+        plt.yticks([])
+        plt.title("Input of First Layer",fontsize = 5)
+        plt.xticks([])
+        plt.legend(loc='upper right', bbox_to_anchor=(0, 0), ncol=1,fancybox=True, shadow=False, fontsize = 2)
+        # plt.savefig('../reports/figures/input_tsne.png')
+        plt.show()
         
