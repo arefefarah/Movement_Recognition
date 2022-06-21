@@ -1,6 +1,8 @@
 
 """collection of functions for model instances"""
 
+# import data
+
 from os.path import dirname, join as pjoin
 import os
 import sys
@@ -46,6 +48,19 @@ class Mov1DCNN(nn.Module):
           nn.Conv1d(in_channels=250, out_channels=124, kernel_size=2),
           nn.ReLU(),
           nn.MaxPool1d(kernel_size=2, stride=2))
+        # self.fclayers = nn.sequential(
+#             out = self.layer2(out)
+# #         print(out.size(0))
+#         out = out.reshape(out.size(0), -1)
+#         out = self.dropout(out)
+#         out = self.fc1(out)
+#         out = self.relu(out)
+#         out = self.dropout(out)
+#         out = self.fc2(out)
+#         out = self.relu(out)
+#         out = self.dropout(out)
+#         out = self.fc3(out)
+#         )
 
         self.dropout = nn.Dropout(p=0.2)
         self.relu = nn.ReLU()
@@ -107,8 +122,8 @@ class MotionDataset(Dataset):
     
 
 
-
-class Run_model():
+"""ModelHandler"""
+class ModelHandler():
     def __init__(self,model,input_dict, reg ="l1"): 
         # super(Run_model,self).__init__()
         self.model = model
@@ -222,6 +237,10 @@ class Run_model():
         np.save("../data/03_processed/fc3-out.npy", self.activation["fc3"])
 
 
+
+
+    # class Plotter():
+    # # def __init__(self,): 
     def plotRDM(self,plot_input = False):
         self.movements = np.unique(vars(self.motion_test)["labels"])
         conds = self.movements
@@ -282,7 +301,7 @@ class Run_model():
         # fig.savefig('../reports/figures/allsubjects_input_rdm.png', bbox_inches='tight', dpi=300)
 
 
-
+    #self.plotter.plot_confusion_matrix(self.real_labels, self.predicted_labels)
 
     def plotConfusionMatrix(self):
         self.real_labels = [int(x) for x in self.real_test_labels]
@@ -301,7 +320,7 @@ class Run_model():
         plt.xlabel('predicted move')
         plt.ylabel('real move')
         plt.show()
-        return(cm)
+        return(cm,tick_names)
 
 
     def plot_tsne(self,layer,perplexity = 30, iter = 2000 ):

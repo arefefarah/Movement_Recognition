@@ -256,7 +256,7 @@ def csvSubject_loader(dir,min_length,max_length,method = "padding"):
 
 
 
-def save_data(sub_info, movement_name_list,subjects, method = "padding"):
+def save_data(sub_info, movement_name_list,subjects, method = "padding", freq = None):
     p=np.array(sub_info)
     jj = p[0]
     k =p.shape[0]
@@ -286,6 +286,7 @@ def save_data(sub_info, movement_name_list,subjects, method = "padding"):
         np.save("../data/03_processed/interpolation/labels_name.npy", motion_name)
         np.save("../data/03_processed/interpolation/labels.npy", motion_num)
         np.save("../data/03_processed/interpolation/subjects.npy", subjects)
+
     if method == "frequency":
         np.save("../data/03_processed/frequency/input_model.npy", final_data)
         np.save("../data/03_processed/frequency/labels_name.npy", motion_name)
