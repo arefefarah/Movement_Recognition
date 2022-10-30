@@ -35,10 +35,10 @@ from torch.utils.data import DataLoader
 
 
 class Mov1DCNN(nn.Module):
-    def __init__(self):
+    def __init__(self,num_classes):
         
         super(Mov1DCNN, self).__init__()
-
+        self.num_classes = num_classes
         self.layer1 = nn.Sequential(
           nn.Conv1d(in_channels=28, out_channels=250, kernel_size=6, stride=2),
           nn.ReLU(),
@@ -67,7 +67,7 @@ class Mov1DCNN(nn.Module):
         self.fc1 = nn.Linear(9672, 2000)  
         self.fc2 = nn.Linear(2000, 1000)
         # num_classes = 21
-        self.fc3 = nn.Linear(1000, 20)
+        self.fc3 = nn.Linear(1000, self.num_classes)
 
     def forward(self, x):
         out = self.layer1(x)
@@ -114,9 +114,7 @@ class MotionDataset(Dataset):
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
-
         sample = (np.float32(np.squeeze(self.input_array[idx,:,:])), self.labels[idx])
-
         return sample
     
     
@@ -124,7 +122,7 @@ class MotionDataset(Dataset):
 
 """ModelHandler"""
 class ModelHandler():
-    def __init__(self,model,input_dict, reg ="l1"): 
+    def __init__(self,model,input_dict, reg ="l1" ): 
         # super(Run_model,self).__init__()
         self.model = model
         self.device = "cpu"
@@ -135,6 +133,7 @@ class ModelHandler():
         # Hyperparameters
         self.num_epochs = 200
         self.num_classes = np.unique(input_dict['labels_name']).shape[0]
+        # self.num_classes = num_classes
         self.batch_size = 100
         self.input_dict = input_dict
         self.motion_train = MotionDataset(data_dict = self.input_dict,train=True )
@@ -213,6 +212,7 @@ class ModelHandler():
                 correct += (predicted == labels).sum().item()
 
         print(f"Test Accuracy of the model on the test moves: {(correct / total)*100:.3f}%")
+        return((correct / total)*100)
 
     def layer_extractor(self):
         def get_activation(name):
@@ -276,6 +276,10 @@ class ModelHandler():
             title = "Input for all subjects"
             rdm = rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None)
             fig = sns.clustermap(rdm.get_matrices().reshape(20,20), figsize= (6,6))
+            plt.show()
+            fig, ax, ret_val = rsatoolbox.vis.show_rdm(rdm)
+            plt.show()
+            # normalized = 
         #plot rdm for layers
         else:
             
@@ -295,6 +299,7 @@ class ModelHandler():
                 title = "output of {} layer".format(l)+" for all subjects"
                 rdm = rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None)
                 fig = sns.clustermap(rdm.get_matrices().reshape(20,20), figsize= (6,6))
+                fig, ax, ret_val = rsatoolbox.vis.show_rdm(rdm)
                 plt.show()
             # fig.savefig('../reports/figures/allsubjects_{}_rdm.png'.format(layer), bbox_inches='tight', dpi=300) 
 
@@ -349,3 +354,6 @@ class ModelHandler():
         # plt.savefig('../reports/figures/input_tsne.png')
         plt.show()
         
+
+
+
