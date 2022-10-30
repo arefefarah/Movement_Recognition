@@ -258,7 +258,7 @@ class ModelHandler():
                     data_all_movement = np.concatenate([data_all_movement,B])
 
             return(data_all_movement)
-        
+        rdm = []
         #plot rdm for input layer
         if plot_input:          
             # shape = (1,20,28,554)
@@ -274,16 +274,17 @@ class ModelHandler():
                                 obs_descriptors=obs_des
                                 )
             title = "Input for all subjects"
-            rdm = rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None)
-            fig = sns.clustermap(rdm.get_matrices().reshape(20,20), figsize= (6,6))
+            rdm[0] = rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None)
+            fig = sns.clustermap(rdm[0].get_matrices().reshape(20,20), figsize= (6,6))
             plt.show()
-            fig, ax, ret_val = rsatoolbox.vis.show_rdm(rdm)
+            fig, ax, ret_val = rsatoolbox.vis.show_rdm(rdm[0], figsize= (6,6))
             plt.show()
             # normalized = 
         #plot rdm for layers
         else:
             
             interest_layers = ["fc1","fc2","fc3"]
+            i=0
             for l in interest_layers:
                 data = self.activation[l]
                 # print("data shape", data.shape)
@@ -297,12 +298,13 @@ class ModelHandler():
                                     )
 
                 title = "output of {} layer".format(l)+" for all subjects"
-                rdm = rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None)
-                fig = sns.clustermap(rdm.get_matrices().reshape(20,20), figsize= (6,6))
-                fig, ax, ret_val = rsatoolbox.vis.show_rdm(rdm)
+                rdm[i] = rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None)
+                fig = sns.clustermap(rdm[i].get_matrices().reshape(20,20), figsize= (6,6))
+                fig, ax, ret_val = rsatoolbox.vis.show_rdm(rdm[i], figsize= (6,6))
                 plt.show()
+                i += 1
             # fig.savefig('../reports/figures/allsubjects_{}_rdm.png'.format(layer), bbox_inches='tight', dpi=300) 
-
+        return(rdm)
         # fig.savefig('../reports/figures/allsubjects_input_rdm.png', bbox_inches='tight', dpi=300)
 
 
@@ -344,7 +346,8 @@ class ModelHandler():
         i=0
         for ul in u_labels:
             # print(ul)
-            plt.scatter(tsne_data[data_dict["labels_name"]==ul,0], tsne_data[data_dict["labels_name"]==ul, 1],label=ul,s=5,c=cmp[i],cmap=cmp)
+            plt.scatter(tsne_data[self.data_dict["labels_name"]==ul,0], tsne_data[self.data_dict["labels_name"]==ul, 1],
+            label=ul,s=5,c=cmp[i],cmap=cmp)
             i+=1
         plt.axis('tight')
         plt.yticks([])

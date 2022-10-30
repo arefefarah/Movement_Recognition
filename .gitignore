@@ -1,5 +1,6 @@
 # Data folder
 data/
+scripts and data for server/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
