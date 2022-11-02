@@ -155,9 +155,11 @@ class ModelHandler():
         loss_list = []
         acc_list = []
         for epoch in range(self.num_epochs):
+            self.real_train_labels =[]
             for i, (motions, labels) in enumerate(self.train_loader):
                 motions, labels = motions.to(self.device), labels.to(self.device)
-
+                
+                # print(labels.shape)
                 # Run the forward pass
                 outputs = self.model(motions)
                 self.loss = self.loss_fn(outputs, labels)
@@ -188,6 +190,7 @@ class ModelHandler():
                     print(f"Epoch [{epoch+1}/{self.num_epochs}], Step [{i+1}/{total_step}], "
                         f"Loss: {self.loss.item():.4f}, "
                         f"Accuracy: {((correct / total) * 100):.2f}%")
+            # print(len(self.real_train_labels))
 
 
         # plt.plot(loss_list)
@@ -214,7 +217,7 @@ class ModelHandler():
         print(f"Test Accuracy of the model on the test moves: {(correct / total)*100:.3f}%")
         return((correct / total)*100)
 
-    def layer_extractor(self):
+    def layer_extractor(self,train = False):
         def get_activation(name):
             def hook(model, input, output):
                 self.activation[name] = output.detach()
@@ -223,12 +226,22 @@ class ModelHandler():
         self.model.fc1.register_forward_hook(get_activation(name = 'fc1'))
         self.model.fc2.register_forward_hook(get_activation(name ='fc2'))
         self.model.fc3.register_forward_hook(get_activation(name = 'fc3'))
-        d =vars(self.motion_test)
+        if train:
+            self.real_train_labels=[]
+            self.traindata_loader = DataLoader(dataset= self.motion_train, batch_size=self.batch_size, shuffle=False)
+            for motions, labels in self.traindata_loader:
+                m, l = motions.to(self.device), labels.to(self.device)
+                self.real_train_labels += list(l)
+            d =vars(self.motion_train)
+            labels_name = self.le.inverse_transform(self.real_train_labels)
+        else:
+            d =vars(self.motion_test)
+            labels_name = self.le.inverse_transform(self.real_test_labels)
         x = d["input_array"]
         output = self.model(torch.Tensor(x))
         self.activation["input"] = torch.Tensor(x)
-        labels_test_name = self.le.inverse_transform(self.real_test_labels)
-        return self.activation,labels_test_name
+        
+        return self.activation,labels_name
 
     def save_layerOutput(self):
         np.save("../data/03_processed/test_input.npy", self.activation["input"])
@@ -274,12 +287,17 @@ class ModelHandler():
                                 obs_descriptors=obs_des
                                 )
             title = "Input for all subjects"
-            rdm[0] = rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None)
-            fig = sns.clustermap(rdm[0].get_matrices().reshape(20,20), figsize= (6,6))
+            rdm.append(rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None))
+            
+            self.real_labels = [int(x) for x in self.real_test_labels]
+            self.predicted_labels = [int(x) for x in self.predicted_labels]
+            labels_unique = np.unique(self.real_test_labels)
+            labels_name = self.le.inverse_transform(labels_unique)
+            tick_names = [a.replace("_", " ") for a in labels_name]
+            fig = sns.clustermap(rdm[0].get_matrices().reshape(20,20),yticklabels = tick_names,xticklabels = tick_names,vmin=0, vmax=1.5 )
+            plt.setp(fig.ax_heatmap.get_xticklabels(), rotation=90) 
             plt.show()
-            fig, ax, ret_val = rsatoolbox.vis.show_rdm(rdm[0], figsize= (6,6))
-            plt.show()
-            # normalized = 
+         
         #plot rdm for layers
         else:
             
@@ -298,17 +316,21 @@ class ModelHandler():
                                     )
 
                 title = "output of {} layer".format(l)+" for all subjects"
-                rdm[i] = rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None)
-                fig = sns.clustermap(rdm[i].get_matrices().reshape(20,20), figsize= (6,6))
-                fig, ax, ret_val = rsatoolbox.vis.show_rdm(rdm[i], figsize= (6,6))
+                rdm.append( rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None))
+                self.real_labels = [int(x) for x in self.real_test_labels]
+                self.predicted_labels = [int(x) for x in self.predicted_labels]
+                labels_unique = np.unique(self.real_test_labels)
+                labels_name = self.le.inverse_transform(labels_unique)
+                tick_names = [a.replace("_", " ") for a in labels_name]
+                fig = sns.clustermap(rdm[i].get_matrices().reshape(20,20),yticklabels = tick_names,xticklabels = tick_names,vmin=0, vmax=1.5 )
+                plt.setp(fig.ax_heatmap.get_xticklabels(), rotation=90) 
                 plt.show()
                 i += 1
+                
             # fig.savefig('../reports/figures/allsubjects_{}_rdm.png'.format(layer), bbox_inches='tight', dpi=300) 
         return(rdm)
-        # fig.savefig('../reports/figures/allsubjects_input_rdm.png', bbox_inches='tight', dpi=300)
 
 
-    #self.plotter.plot_confusion_matrix(self.real_labels, self.predicted_labels)
 
     def plotConfusionMatrix(self):
         self.real_labels = [int(x) for x in self.real_test_labels]
@@ -319,9 +341,6 @@ class ModelHandler():
         cm = confusion_matrix(self.real_labels, self.predicted_labels,labels = labels_unique,normalize='true')
         plt.figure(figsize=(8,10))
         plt.imshow(cm)
-
-#         ax.set_xticklabels([''] + labels)
-#         ax.set_yticklabels([''] + labels)
         plt.xticks(range(len(tick_names)),tick_names, rotation=90)
         plt.yticks(range(len(tick_names)),tick_names)
         plt.xlabel('predicted move')
@@ -330,15 +349,15 @@ class ModelHandler():
         return(cm,tick_names)
 
 
-    def plot_tsne(self,layer,perplexity = 30, iter = 2000 ):
-        u_labels = np.unique(self.data_dict["labels_name"])
+    def plot_tsne(self,labels_name,visualization,layer,perplexity = 30, iter = 2000 ):
+        u_labels = np.unique(labels_name)
         model = TSNE(n_components=2, random_state=1,learning_rate=100,perplexity=perplexity, n_iter=iter)
         if layer == "input":
             d =vars(self.motion_test)
             inputdata = d["input_array"]
             input_data = inputdata.reshape(inputdata.shape[0],inputdata.shape[1]*inputdata.shape[2])
         else:
-            input_data = self.visualization[layer]
+            input_data = visualization[layer]
         tsne_data = model.fit_transform(input_data)
         cmp = ["#00FFFF", "#0000FF","#8A2BE2","#EE3B3B","#7FFF00","#EE7621","#FF1493","#FFD700","#8B2252","#FF6A6A",
         "#BFEFFF","#FFBBFF","#FFB5C5","#00CD66","#008080","#8B8B00","#CDBA96","#8B3626","#8B8989","#5E2612"]
@@ -346,7 +365,7 @@ class ModelHandler():
         i=0
         for ul in u_labels:
             # print(ul)
-            plt.scatter(tsne_data[self.data_dict["labels_name"]==ul,0], tsne_data[self.data_dict["labels_name"]==ul, 1],
+            plt.scatter(tsne_data[labels_name==ul,0], tsne_data[labels_name==ul, 1],
             label=ul,s=5,c=cmp[i],cmap=cmp)
             i+=1
         plt.axis('tight')
