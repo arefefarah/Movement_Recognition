@@ -59,7 +59,8 @@ class ReverseMov1DCNN(nn.Module):
         out = self.fc3(x)
         out = self.fc2(out)
         out = self.fc1(out)
-        out = out.reshape(out.size(0), 124, 39)
+        print(out.size())
+        out = out.reshape(out.size(0), 124, 78)
         
         out = self.unpool2(out,self.maxpool_indices[1])
         out = self.layer2(out)
@@ -70,59 +71,6 @@ class ReverseMov1DCNN(nn.Module):
         return out
 
 
-
-
-
-# class TRANS_Mov1DCNN(nn.Module):
-#     def __init__(self,num_classes):
-        
-#         super(TRANS_Mov1DCNN, self).__init__()
-#         self.num_classes = num_classes
-#         self.layer1 = nn.Sequential(
-#             nn.ReLU(),
-#             nn.ConvTranspose1d(in_channels=124, out_channels=250, kernel_size=2))
-#         #   nn.ReLU(),
-#         #   nn.MaxPool1d(kernel_size=2, stride=2))
-
-#         self.layer2 = nn.Sequential(
-#             nn.ReLU(),
-#             nn.ConvTranspose1d(in_channels=250, out_channels=28, kernel_size=6))
-#         #   nn.ReLU(),
-#         #   nn.MaxPool1d(kernel_size=2, stride=2))
-
-#         self.dropout = nn.Dropout(p=0.2)
-#         self.relu = nn.ReLU()
-#         # self.atanh = torch.atanh()
-#         self.tanh = nn.Tanh()
-#         self.fc1 = nn.Linear(self.num_classes, 1000)  
-#         self.fc2 = nn.Linear(1000, 2000)
-#         # num_classes = 21
-#         self.fc3 = nn.Linear(2000,9672 )
-
-#     def forward(self, x):
-#         print("x: ", x.size())
-#         out = self.fc1(x)
-#         out = self.tanh(out)
-#         # out = self.tanh(out)
-#         out = self.dropout(out)
-#         print(out.size())
-#         out = self.fc2(out)
-#         out = self.tanh(out)
-#         # out = self.tanh(out)
-#         # print(out.shape)
-#         out = self.dropout(out)
-#         print(out.size())
-#         out = self.fc3(out)
-#         print(out.size())
-#         #deconv layers
-#         out = out.reshape(100,124,78)
-#         print(out.size())
-#         out = self.layer1(out)
-#         print(out.size())
-#         out = self.layer2(out)
-#         print(out.size())
-    
-#         return out
 
 
 class MotionDataset(Dataset):
@@ -178,11 +126,7 @@ class ModelHandler():
         self.activation = {}
         self.le = preprocessing.LabelEncoder()
         self.le.fit(self.input_dict['labels_name'])
-        # print(np.unique(input_dict['labels_name']))
-        # print(np.unique(vars(self.motion_test)["labels"]))
-        # self.test_labels_name = le.inverse_transform(vars(self.motion_test)["labels"])
-        # self.train_labels_name =  le.inverse_transform(vars(self.motion_train)["labels"])
-        
+       
 
     def train(self):
         total_step = len(self.train_loader)
@@ -282,134 +226,4 @@ class ModelHandler():
         np.save("../data/03_processed/fc1-out.npy", self.activation["fc1"])
         np.save("../data/03_processed/fc2-out.npy", self.activation["fc2"])
         np.save("../data/03_processed/fc3-out.npy", self.activation["fc3"])
-
-
-
-
-    # class Plotter():
-    # # def __init__(self,): 
-    def plotRDM(self,plot_input = False):
-        self.movements = np.unique(vars(self.motion_test)["labels"])
-        conds = self.movements
-
-        def avg_movements(data):
-            for m in self.movements:
-                selected_movements = np.where(self.real_test_labels == m)
-            # print(selected_movements)
-                Data = np.dstack(data[selected_movements,:])
-                # print("dstack",Data.shape)
-                if m== self.movements[0]:
-                    data_all_movement = np.dstack(np.mean(Data, axis = 0))
-                else:
-                    B = np.dstack(np.mean(Data, axis = 0))
-                    data_all_movement = np.concatenate([data_all_movement,B])
-
-            return(data_all_movement)
-        rdm = []
-        #plot rdm for input layer
-        if plot_input:          
-            # shape = (1,20,28,554)
-            d =vars(self.motion_test)
-            inputdata = d["input_array"]
-            # print("data shape", inputdata.shape)
-            Data = avg_movements(inputdata)
-            Data = Data.reshape(20,Data.shape[1]*Data.shape[2])
-            obs_des = {"conds":conds}
-            des = {'subj': all}
-            data = rsd.Dataset(measurements=Data,
-                                descriptors=des,
-                                obs_descriptors=obs_des
-                                )
-            title = "Input for all subjects"
-            rdm.append(rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None))
-            
-            self.real_labels = [int(x) for x in self.real_test_labels]
-            self.predicted_labels = [int(x) for x in self.predicted_labels]
-            labels_unique = np.unique(self.real_test_labels)
-            labels_name = self.le.inverse_transform(labels_unique)
-            tick_names = [a.replace("_", " ") for a in labels_name]
-            fig = sns.clustermap(rdm[0].get_matrices().reshape(20,20),yticklabels = tick_names,xticklabels = tick_names,vmin=0, vmax=1.5 )
-            plt.setp(fig.ax_heatmap.get_xticklabels(), rotation=90) 
-            plt.show()
-         
-        #plot rdm for layers
-        else:
-            
-            interest_layers = ["fc1","fc2","fc3"]
-            i=0
-            for l in interest_layers:
-                data = self.activation[l]
-                # print("data shape", data.shape)
-                Data = avg_movements(data.detach().numpy())
-                Data = Data.reshape(20,Data.shape[1]*Data.shape[2])
-                obs_des = {"conds":conds}
-                des = {'subj': all}
-                data = rsd.Dataset(measurements=Data,
-                                    descriptors=des,
-                                    obs_descriptors=obs_des
-                                    )
-
-                title = "output of {} layer".format(l)+" for all subjects"
-                rdm.append( rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None))
-                self.real_labels = [int(x) for x in self.real_test_labels]
-                self.predicted_labels = [int(x) for x in self.predicted_labels]
-                labels_unique = np.unique(self.real_test_labels)
-                labels_name = self.le.inverse_transform(labels_unique)
-                tick_names = [a.replace("_", " ") for a in labels_name]
-                fig = sns.clustermap(rdm[i].get_matrices().reshape(20,20),yticklabels = tick_names,xticklabels = tick_names,vmin=0, vmax=1.5 )
-                plt.setp(fig.ax_heatmap.get_xticklabels(), rotation=90) 
-                plt.show()
-                i += 1
-                
-            # fig.savefig('../reports/figures/allsubjects_{}_rdm.png'.format(layer), bbox_inches='tight', dpi=300) 
-        return(rdm)
-
-
-
-    def plotConfusionMatrix(self):
-        self.real_labels = [int(x) for x in self.real_test_labels]
-        self.predicted_labels = [int(x) for x in self.predicted_labels]
-        labels_unique = np.unique(self.real_test_labels)
-        labels_name = self.le.inverse_transform(labels_unique)
-        tick_names = [a.replace("_", " ") for a in labels_name]
-        cm = confusion_matrix(self.real_labels, self.predicted_labels,labels = labels_unique,normalize='true')
-        plt.figure(figsize=(8,10))
-        plt.imshow(cm)
-        plt.xticks(range(len(tick_names)),tick_names, rotation=90)
-        plt.yticks(range(len(tick_names)),tick_names)
-        plt.xlabel('predicted move')
-        plt.ylabel('real move')
-        plt.show()
-        return(cm,tick_names)
-
-
-    def plot_tsne(self,labels_name,visualization,layer,perplexity = 30, iter = 2000 ):
-        u_labels = np.unique(labels_name)
-        model = TSNE(n_components=2, random_state=1,learning_rate=100,perplexity=perplexity, n_iter=iter)
-        if layer == "input":
-            d =vars(self.motion_test)
-            inputdata = d["input_array"]
-            input_data = inputdata.reshape(inputdata.shape[0],inputdata.shape[1]*inputdata.shape[2])
-        else:
-            input_data = visualization[layer]
-        tsne_data = model.fit_transform(input_data)
-        cmp = ["#00FFFF", "#0000FF","#8A2BE2","#EE3B3B","#7FFF00","#EE7621","#FF1493","#FFD700","#8B2252","#FF6A6A",
-        "#BFEFFF","#FFBBFF","#FFB5C5","#00CD66","#008080","#8B8B00","#CDBA96","#8B3626","#8B8989","#5E2612"]
-        plt.figure(num=1, figsize=(4, 2), dpi=500, facecolor='w', edgecolor='w')
-        i=0
-        for ul in u_labels:
-            # print(ul)
-            plt.scatter(tsne_data[labels_name==ul,0], tsne_data[labels_name==ul, 1],
-            label=ul,s=5,c=cmp[i],cmap=cmp)
-            i+=1
-        plt.axis('tight')
-        plt.yticks([])
-        plt.title("Input of First Layer",fontsize = 5)
-        plt.xticks([])
-        plt.legend(loc='upper right', bbox_to_anchor=(0, 0), ncol=1,fancybox=True, shadow=False, fontsize = 2)
-        # plt.savefig('../reports/figures/input_tsne.png')
-        plt.show()
-        
-
-
 

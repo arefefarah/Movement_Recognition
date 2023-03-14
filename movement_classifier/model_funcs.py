@@ -71,8 +71,8 @@ class Mov1DCNN(nn.Module):
         out = self.fc3(out)
         # pick the most likely class:
         out = nn.functional.log_softmax(out, dim=1)
-    
-        return (out)
+        maxpooling_indices = [indices1,indices2]
+        return (out,maxpooling_indices)
 
 
 
@@ -114,7 +114,7 @@ class ModelHandler():
         self.optimizer = torch.optim.Adam(model.parameters(), lr=self.learning_rate)
         self.reg = reg
         # Hyperparameters
-        self.num_epochs = 200
+        self.num_epochs = 2
         self.num_classes = np.unique(input_dict['labels_name']).shape[0]
         # self.num_classes = num_classes
         self.batch_size = 100
@@ -142,9 +142,9 @@ class ModelHandler():
             for i, (motions, labels) in enumerate(self.train_loader):
                 motions, labels = motions.to(self.device), labels.to(self.device)
                 
-                # print(labels.shape)
+                # print(motions.size())
                 # Run the forward pass
-                outputs = self.model(motions)
+                outputs, indices = self.model(motions)
                 self.loss = self.loss_fn(outputs, labels)
 
                 # add regularization
@@ -173,12 +173,12 @@ class ModelHandler():
                     print(f"Epoch [{epoch+1}/{self.num_epochs}], Step [{i+1}/{total_step}], "
                         f"Loss: {self.loss.item():.4f}, "
                         f"Accuracy: {((correct / total) * 100):.2f}%")
-        maxpooling_indices = [self.model.layer1[1],self.model.layer2[1]]
-        return(maxpooling_indices)
+        self.model.eval()
+        return(self.model)
     
 
     def test(self):
-        self.model.eval()
+        # self.model.eval()
         self.real_test_labels, self.predicted_labels = [], []
         with torch.no_grad():
             correct = 0
@@ -186,7 +186,7 @@ class ModelHandler():
             for motions, labels in self.test_loader:
                 motions, labels = motions.to(self.device), labels.to(self.device)
                 self.real_test_labels += list(labels)
-                outputs = self.model(motions)
+                outputs, indices = self.model(motions)
                 _, predicted = torch.max(outputs.data, 1)
                 self.predicted_labels += list(predicted)
                 total += labels.size(0)
