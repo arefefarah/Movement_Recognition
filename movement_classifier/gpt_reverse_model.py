@@ -32,48 +32,97 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
 
-class Mov1DCNN(nn.Module):
-    def __init__(self,num_classes):
+class ReverseMov1DCNN(nn.Module):
+    def __init__(self, num_classes,maxpool_indices):
+        super(ReverseMov1DCNN, self).__init__()
         
-        super(Mov1DCNN, self).__init__()
         self.num_classes = num_classes
-        self.layer1 = nn.Sequential(
-          nn.Conv1d(in_channels=28, out_channels=250, kernel_size=6, stride=2),
-          nn.ReLU(),
-          nn.MaxPool1d(kernel_size=2, stride=2,return_indices=True))
-
+        self.maxpool_indices = maxpool_indices
+        self.fc3 = nn.Linear(num_classes, 1000)
+        self.fc2 = nn.Linear(1000, 2000)
+        self.fc1 = nn.Linear(2000, 9672)
+        
         self.layer2 = nn.Sequential(
-          nn.Conv1d(in_channels=250, out_channels=124, kernel_size=2),
-          nn.ReLU(),
-          nn.MaxPool1d(kernel_size=2, stride=2,return_indices=True))
-
-
-        self.dropout = nn.Dropout(p=0.2)
-        self.relu = nn.ReLU()
-        self.fc1 = nn.Linear(9672, 2000)  
-        self.fc2 = nn.Linear(2000, 1000)
-        # num_classes = 21
-        self.fc3 = nn.Linear(1000, self.num_classes)
-
+            nn.ConvTranspose1d(in_channels=124, out_channels=250, kernel_size=2),
+            nn.ReLU()
+        )
+        
+        self.layer1 = nn.Sequential(
+            nn.ConvTranspose1d(in_channels=250, out_channels=28, kernel_size=6, stride=2),
+            nn.ReLU()
+        )
+        
+        self.unpool2 = nn.MaxUnpool1d(kernel_size=2, stride=2)
+        self.unpool1 = nn.MaxUnpool1d(kernel_size=2, stride=2)
+        
     def forward(self, x):
-        out,indices1 = self.layer1(x)
-               
-        out,indices2 = self.layer2(out)
-#         print(out.size(0))
-        out = out.reshape(out.size(0), -1)
-        out = self.dropout(out)
-        out = self.fc1(out)
-        out = self.relu(out)
-        out = self.dropout(out)
+        out = self.fc3(x)
         out = self.fc2(out)
-        out = self.relu(out)
-        out = self.dropout(out)
-        out = self.fc3(out)
-        # pick the most likely class:
-        out = nn.functional.log_softmax(out, dim=1)
-    
-        return (out)
+        out = self.fc1(out)
+        out = out.reshape(out.size(0), 124, 39)
+        
+        out = self.unpool2(out,self.maxpool_indices[1])
+        out = self.layer2(out)
+        
+        out = self.unpool1(out, self.maxpool_indices[0])
+        out = self.layer1(out)
+        
+        return out
 
+
+
+
+
+# class TRANS_Mov1DCNN(nn.Module):
+#     def __init__(self,num_classes):
+        
+#         super(TRANS_Mov1DCNN, self).__init__()
+#         self.num_classes = num_classes
+#         self.layer1 = nn.Sequential(
+#             nn.ReLU(),
+#             nn.ConvTranspose1d(in_channels=124, out_channels=250, kernel_size=2))
+#         #   nn.ReLU(),
+#         #   nn.MaxPool1d(kernel_size=2, stride=2))
+
+#         self.layer2 = nn.Sequential(
+#             nn.ReLU(),
+#             nn.ConvTranspose1d(in_channels=250, out_channels=28, kernel_size=6))
+#         #   nn.ReLU(),
+#         #   nn.MaxPool1d(kernel_size=2, stride=2))
+
+#         self.dropout = nn.Dropout(p=0.2)
+#         self.relu = nn.ReLU()
+#         # self.atanh = torch.atanh()
+#         self.tanh = nn.Tanh()
+#         self.fc1 = nn.Linear(self.num_classes, 1000)  
+#         self.fc2 = nn.Linear(1000, 2000)
+#         # num_classes = 21
+#         self.fc3 = nn.Linear(2000,9672 )
+
+#     def forward(self, x):
+#         print("x: ", x.size())
+#         out = self.fc1(x)
+#         out = self.tanh(out)
+#         # out = self.tanh(out)
+#         out = self.dropout(out)
+#         print(out.size())
+#         out = self.fc2(out)
+#         out = self.tanh(out)
+#         # out = self.tanh(out)
+#         # print(out.shape)
+#         out = self.dropout(out)
+#         print(out.size())
+#         out = self.fc3(out)
+#         print(out.size())
+#         #deconv layers
+#         out = out.reshape(100,124,78)
+#         print(out.size())
+#         out = self.layer1(out)
+#         print(out.size())
+#         out = self.layer2(out)
+#         print(out.size())
+    
+#         return out
 
 
 class MotionDataset(Dataset):
@@ -82,7 +131,7 @@ class MotionDataset(Dataset):
 #         self.subjects = Subjects
         
         self.motions_train, self.motions_test, self.labels_train, self.labels_test = train_test_split(self.input_dict['input_model'],
-                                                                        self.input_dict['labels'],test_size=0.33, random_state=42)
+                                                                        self.input_dict['labels'],test_size=0.30, random_state=42)
         
 
         if train:
@@ -99,10 +148,12 @@ class MotionDataset(Dataset):
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
-        sample = (np.float32(np.squeeze(self.input_array[idx,:,:])), self.labels[idx])
+        sample = (np.float32(np.squeeze(self.input_array[idx,:])), self.labels[idx])
         return sample
     
     
+
+
 """ModelHandler"""
 class ModelHandler():
     def __init__(self,model,input_dict, reg ="l1" ): 
@@ -115,8 +166,8 @@ class ModelHandler():
         self.reg = reg
         # Hyperparameters
         self.num_epochs = 200
-        self.num_classes = np.unique(input_dict['labels_name']).shape[0]
-        # self.num_classes = num_classes
+        # self.num_classes = np.unique(input_dict['labels_name']).shape[0]
+        self.num_classes = 20
         self.batch_size = 100
         self.input_dict = input_dict
         self.motion_train = MotionDataset(data_dict = self.input_dict,train=True )
@@ -142,7 +193,7 @@ class ModelHandler():
             for i, (motions, labels) in enumerate(self.train_loader):
                 motions, labels = motions.to(self.device), labels.to(self.device)
                 
-                # print(labels.shape)
+                # print("motions",motions.shape)
                 # Run the forward pass
                 outputs = self.model(motions)
                 self.loss = self.loss_fn(outputs, labels)
@@ -173,9 +224,14 @@ class ModelHandler():
                     print(f"Epoch [{epoch+1}/{self.num_epochs}], Step [{i+1}/{total_step}], "
                         f"Loss: {self.loss.item():.4f}, "
                         f"Accuracy: {((correct / total) * 100):.2f}%")
-        maxpooling_indices = [self.model.layer1[1],self.model.layer2[1]]
-        return(maxpooling_indices)
-    
+            # print(len(self.real_train_labels))
+
+
+        # plt.plot(loss_list)
+        # plt.xlabel("steps")
+        # plt.ylabel("loss")
+        # plt.show()
+        # len(loss_list)
 
     def test(self):
         self.model.eval()
@@ -195,11 +251,6 @@ class ModelHandler():
         print(f"Test Accuracy of the model on the test moves: {(correct / total)*100:.3f}%")
         return((correct / total)*100)
 
-    
-
-
-
-
     def layer_extractor(self,train = False):
         def get_activation(name):
             def hook(model, input, output):
@@ -216,32 +267,21 @@ class ModelHandler():
                 m, l = motions.to(self.device), labels.to(self.device)
                 self.real_train_labels += list(l)
             d =vars(self.motion_train)
-            self.labels_name = self.le.inverse_transform(self.real_train_labels)
+            labels_name = self.le.inverse_transform(self.real_train_labels)
         else:
             d =vars(self.motion_test)
-            
-            self.labels_name = self.le.inverse_transform(self.real_test_labels)
+            labels_name = self.le.inverse_transform(self.real_test_labels)
         x = d["input_array"]
-        out = self.model(torch.Tensor(x))
+        output = self.model(torch.Tensor(x))
         self.activation["input"] = torch.Tensor(x)
         
-        return (self.activation,self.labels_name,out)
+        return self.activation,labels_name
 
-    def save_layerOutput(self,train = True):
-        if train:
-            np.save("../data/03_processed/output_train/input.npy", self.activation["input"])
-            np.save("../data/03_processed/output_train/fc1-out.npy", self.activation["fc1"])
-            np.save("../data/03_processed/output_train/fc2-out.npy", self.activation["fc2"])
-            np.save("../data/03_processed/output_train/fc3-out.npy", self.activation["fc3"])
-            np.save("../data/03_processed/output_train/labels_name.npy", self.labels_name)
-            np.save("../data/03_processed/output_train/labels.npy", self.real_train_labels)
-        else:
-            np.save("../data/03_processed/output_test/input.npy", self.activation["input"])
-            np.save("../data/03_processed/output_test/fc1-out.npy", self.activation["fc1"])
-            np.save("../data/03_processed/output_test/fc2-out.npy", self.activation["fc2"])
-            np.save("../data/03_processed/output_test/fc3-out.npy", self.activation["fc3"])
-            np.save("../data/03_processed/output_test/labels_name.npy", self.labels_name)
-            np.save("../data/03_processed/output_test/labels.npy", self.real_test_labels)
+    def save_layerOutput(self):
+        np.save("../data/03_processed/test_input.npy", self.activation["input"])
+        np.save("../data/03_processed/fc1-out.npy", self.activation["fc1"])
+        np.save("../data/03_processed/fc2-out.npy", self.activation["fc2"])
+        np.save("../data/03_processed/fc3-out.npy", self.activation["fc3"])
 
 
 
