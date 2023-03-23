@@ -114,7 +114,7 @@ class ModelHandler():
         self.optimizer = torch.optim.Adam(model.parameters(), lr=self.learning_rate)
         self.reg = reg
         # Hyperparameters
-        self.num_epochs = 2
+        self.num_epochs = 200
         self.num_classes = np.unique(input_dict['labels_name']).shape[0]
         # self.num_classes = num_classes
         self.batch_size = 100
@@ -154,6 +154,9 @@ class ModelHandler():
                     
                 if self.reg == "l1":
                     reg_norm = sum(abs(p).sum()for p in self.model.parameters())
+
+                #add regulaizaation for activity unit
+                # l1_regularization = lambda1 * torch.norm(layer1_out, 1)
                     
                 self.loss = self.loss + reg_lambda * reg_norm
                 loss_list.append(self.loss.item())
