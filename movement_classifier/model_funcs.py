@@ -150,15 +150,18 @@ class ModelHandler():
                 # add regularization
                 reg_lambda = 0.001
                 if self.reg == "l2":
-                    reg_norm = sum(p.pow(2.0).sum()for p in self.model.parameters())
+                    reg_norm_weights = sum(p.pow(2.0).sum()for p in self.model.parameters())
                     
                 if self.reg == "l1":
-                    reg_norm = sum(abs(p).sum()for p in self.model.parameters())
+                    reg_norm_weights = sum(abs(p).sum()for p in self.model.parameters())
 
                 #add regulaizaation for activity unit
-                # l1_regularization = lambda1 * torch.norm(layer1_out, 1)
+
+                lambda_reg = 0.01
+                reg_loss = lambda_reg * torch.norm(outputs, p=2) # L2 norm of the activations
+                # loss += reg_loss
                     
-                self.loss = self.loss + reg_lambda * reg_norm
+                self.loss = self.loss + reg_lambda * reg_norm_weights + reg_loss
                 loss_list.append(self.loss.item())
 
             # Backprop and perform Adam optimization

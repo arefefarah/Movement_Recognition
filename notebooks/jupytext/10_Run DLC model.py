@@ -1,7 +1,7 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,jupytext//py:light
+#     formats: ipynb,jupytext//py
 #     text_representation:
 #       extension: .py
 #       format_name: light
@@ -32,6 +32,7 @@ from scipy.interpolate import CubicSpline
 import matplotlib.pyplot as plt
 from sklearn import preprocessing
 import numpy as np
+import torch
 import pandas as pd
 import plotly.express as px
 import plotly
@@ -99,10 +100,6 @@ my_testmodel.test()
 # my_testmodel.plotRDM(plot_input=False)
 
 # -
-
-l = (2,[5,6])
-l[1].size()
-
 
 def plot_difconfmat(in1,in2):
     model1 = model_funcs.Mov1DCNN()
