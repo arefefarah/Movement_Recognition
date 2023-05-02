@@ -254,59 +254,118 @@ class ModelHandler():
 
     # class Plotter():
     # # def __init__(self,): 
-    def plotRDM(self,plot_input = False):
-        self.movements = np.unique(vars(self.motion_test)["labels"])
-        conds = self.movements
+    def plotRDM(self,plot_input = False, training_flag = True):
+        if training_flag:
+            self.movements = np.unique(vars(self.motion_train)["labels"])
+            # conds = self.movements
 
-        def avg_movements(data):
-            for m in self.movements:
-                selected_movements = np.where(self.real_test_labels == m)
-            # print(selected_movements)
-                Data = np.dstack(data[selected_movements,:])
-                # print("dstack",Data.shape)
-                if m== self.movements[0]:
-                    data_all_movement = np.dstack(np.mean(Data, axis = 0))
-                else:
-                    B = np.dstack(np.mean(Data, axis = 0))
-                    data_all_movement = np.concatenate([data_all_movement,B])
+            # def avg_movements(data):
+            #     for m in self.movements:
+            #         selected_movements = np.where(self.real_train_labels == m)
+            #     # print(selected_movements)
+            #         Data = np.dstack(data[selected_movements,:])
+            #         # print("dstack",Data.shape)
+            #         if m== self.movements[0]:
+            #             data_all_movement = np.dstack(np.mean(Data, axis = 0))
+            #         else:
+            #             B = np.dstack(np.mean(Data, axis = 0))
+            #             data_all_movement = np.concatenate([data_all_movement,B])
 
-            return(data_all_movement)
-        rdm = []
-        #plot rdm for input layer
-        if plot_input:          
-            # shape = (1,20,28,554)
-            d =vars(self.motion_test)
-            inputdata = d["input_array"]
-            # print("data shape", inputdata.shape)
-            Data = avg_movements(inputdata)
-            Data = Data.reshape(20,Data.shape[1]*Data.shape[2])
-            obs_des = {"conds":conds}
-            des = {'subj': all}
-            data = rsd.Dataset(measurements=Data,
-                                descriptors=des,
-                                obs_descriptors=obs_des
-                                )
-            title = "Input for all subjects"
-            rdm.append(rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None))
+            #     return(data_all_movement)
+            # rdm = []
+            # #plot rdm for input layer
+            # if plot_input:          
+            #     # shape = (1,20,28,554)
+            #     d =vars(self.motion_train)
+            #     inputdata = d["input_array"]
+            #     # print("data shape", inputdata.shape)
+            #     Data = avg_movements(inputdata)
+            #     Data = Data.reshape(20,Data.shape[1]*Data.shape[2])
+            #     obs_des = {"conds":conds}
+            #     des = {'subj': all}
+            #     data = rsd.Dataset(measurements=Data,
+            #                         descriptors=des,
+            #                         obs_descriptors=obs_des
+            #                         )
+            #     title = "Input for all subjects"
+            #     rdm.append(rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None))
+                
+            #     self.real_labels = [int(x) for x in self.real_test_labels]
+            #     self.predicted_labels = [int(x) for x in self.predicted_labels]
+            #     labels_unique = np.unique(self.real_test_labels)
+            #     labels_name = self.le.inverse_transform(labels_unique)
+            #     tick_names = [a.replace("_", " ") for a in labels_name]
+            #     fig = sns.clustermap(rdm[0].get_matrices().reshape(20,20),yticklabels = tick_names,xticklabels = tick_names,vmin=0, vmax=1.5 )
+            #     plt.setp(fig.ax_heatmap.get_xticklabels(), rotation=90) 
+            #     plt.title("RDM for input layer")
+            #     plt.savefig('../reports/RDM_figures/input.png')
+            #     plt.show()
             
-            self.real_labels = [int(x) for x in self.real_test_labels]
-            self.predicted_labels = [int(x) for x in self.predicted_labels]
-            labels_unique = np.unique(self.real_test_labels)
-            labels_name = self.le.inverse_transform(labels_unique)
-            tick_names = [a.replace("_", " ") for a in labels_name]
-            fig = sns.clustermap(rdm[0].get_matrices().reshape(20,20),yticklabels = tick_names,xticklabels = tick_names,vmin=0, vmax=1.5 )
-            plt.setp(fig.ax_heatmap.get_xticklabels(), rotation=90) 
-            plt.show()
-         
-        #plot rdm for layers
+            # #plot rdm for layers
+            # else:
+                
+            #     interest_layers = ["fc1","fc2","fc3"]
+            #     i=0
+            #     for l in interest_layers:
+            #         data = self.activation[l]
+            #         # print("data shape", data.shape)
+            #         Data = avg_movements(data.detach().numpy())
+            #         Data = Data.reshape(20,Data.shape[1]*Data.shape[2])
+            #         obs_des = {"conds":conds}
+            #         des = {'subj': all}
+            #         data = rsd.Dataset(measurements=Data,
+            #                             descriptors=des,
+            #                             obs_descriptors=obs_des
+            #                             )
+
+            #         title = "output of {} layer".format(l)+" for all subjects"
+            #         rdm.append( rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None))
+            #         self.real_labels = [int(x) for x in self.real_test_labels]
+            #         self.predicted_labels = [int(x) for x in self.predicted_labels]
+            #         labels_unique = np.unique(self.real_test_labels)
+            #         labels_name = self.le.inverse_transform(labels_unique)
+            #         tick_names = [a.replace("_", " ") for a in labels_name]
+            #         fig = sns.clustermap(rdm[i].get_matrices().reshape(20,20),yticklabels = tick_names,xticklabels = tick_names,vmin=0, vmax=1.5 )
+            #         plt.setp(fig.ax_heatmap.get_xticklabels(), rotation=90) 
+            #         plt.title("RDM for input layer")
+            #         plt.savefig('../reports/RDM_figures/layer {}.png'.format(l,))
+            #         plt.show()
+            #         i += 1
+
+
+
+
+
+
+
+
+
         else:
-            
-            interest_layers = ["fc1","fc2","fc3"]
-            i=0
-            for l in interest_layers:
-                data = self.activation[l]
-                # print("data shape", data.shape)
-                Data = avg_movements(data.detach().numpy())
+
+            self.movements = np.unique(vars(self.motion_test)["labels"])
+            conds = self.movements
+
+            def avg_movements(data):
+                for m in self.movements:
+                    selected_movements = np.where(self.real_test_labels == m)
+                # print(selected_movements)
+                    Data = np.dstack(data[selected_movements,:])
+                    # print("dstack",Data.shape)
+                    if m== self.movements[0]:
+                        data_all_movement = np.dstack(np.mean(Data, axis = 0))
+                    else:
+                        B = np.dstack(np.mean(Data, axis = 0))
+                        data_all_movement = np.concatenate([data_all_movement,B])
+
+                return(data_all_movement)
+            rdm = []
+            #plot rdm for input layer
+            if plot_input:          
+                # shape = (1,20,28,554)
+                d =vars(self.motion_test)
+                inputdata = d["input_array"]
+                # print("data shape", inputdata.shape)
+                Data = avg_movements(inputdata)
                 Data = Data.reshape(20,Data.shape[1]*Data.shape[2])
                 obs_des = {"conds":conds}
                 des = {'subj': all}
@@ -314,18 +373,50 @@ class ModelHandler():
                                     descriptors=des,
                                     obs_descriptors=obs_des
                                     )
-
-                title = "output of {} layer".format(l)+" for all subjects"
-                rdm.append( rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None))
+                title = "Input for all subjects"
+                rdm.append(rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None))
+                
                 self.real_labels = [int(x) for x in self.real_test_labels]
                 self.predicted_labels = [int(x) for x in self.predicted_labels]
                 labels_unique = np.unique(self.real_test_labels)
                 labels_name = self.le.inverse_transform(labels_unique)
                 tick_names = [a.replace("_", " ") for a in labels_name]
-                fig = sns.clustermap(rdm[i].get_matrices().reshape(20,20),yticklabels = tick_names,xticklabels = tick_names,vmin=0, vmax=1.5 )
+                fig = sns.clustermap(rdm[0].get_matrices().reshape(20,20),yticklabels = tick_names,xticklabels = tick_names,vmin=0, vmax=1.5 )
                 plt.setp(fig.ax_heatmap.get_xticklabels(), rotation=90) 
+                plt.title("RDM for input layer")
+                plt.savefig('../reports/RDM_figures/input.png')
                 plt.show()
-                i += 1
+            
+            #plot rdm for layers
+            else:
+                
+                interest_layers = ["fc1","fc2","fc3"]
+                i=0
+                for l in interest_layers:
+                    data = self.activation[l]
+                    # print("data shape", data.shape)
+                    Data = avg_movements(data.detach().numpy())
+                    Data = Data.reshape(20,Data.shape[1]*Data.shape[2])
+                    obs_des = {"conds":conds}
+                    des = {'subj': all}
+                    data = rsd.Dataset(measurements=Data,
+                                        descriptors=des,
+                                        obs_descriptors=obs_des
+                                        )
+
+                    title = "output of {} layer".format(l)+" for all subjects"
+                    rdm.append( rsatoolbox.rdm.calc_rdm(data, method="correlation", descriptor=None, noise=None))
+                    self.real_labels = [int(x) for x in self.real_test_labels]
+                    self.predicted_labels = [int(x) for x in self.predicted_labels]
+                    labels_unique = np.unique(self.real_test_labels)
+                    labels_name = self.le.inverse_transform(labels_unique)
+                    tick_names = [a.replace("_", " ") for a in labels_name]
+                    fig = sns.clustermap(rdm[i].get_matrices().reshape(20,20),yticklabels = tick_names,xticklabels = tick_names,vmin=0, vmax=1.5 )
+                    plt.setp(fig.ax_heatmap.get_xticklabels(), rotation=90) 
+                    plt.title("RDM for input layer")
+                    plt.savefig('../reports/RDM_figures/layer {}.png'.format(l,))
+                    plt.show()
+                    i += 1
                 
             # fig.savefig('../reports/figures/allsubjects_{}_rdm.png'.format(layer), bbox_inches='tight', dpi=300) 
         return(rdm)
