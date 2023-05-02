@@ -16,7 +16,7 @@
 # #### In this notebook, we did tsne method on output of fully connedcted layers of model to visualize featurs and outputs for different movement during the process of model 
 
 # +
-
+import sys
 sys.path.insert(0, '../')
 import movement_classifier.utils as utils
 import movement_classifier.data_loader as data_loader
@@ -44,7 +44,7 @@ import scipy.io as sio
 
 # -
 
-def plot_tsne(labels_name,visualization,layer,perplexity = 30, iter = 2000 ):
+def plot_tsne(labels_name,visualization,layer,perplexity = 30, iter = 2000, training_flag = "training" ):
     u_labels = np.unique(labels_name)
     model = TSNE(n_components=2, random_state=1,learning_rate=100,perplexity=perplexity, n_iter=iter)
     if layer == "input":
@@ -66,7 +66,8 @@ def plot_tsne(labels_name,visualization,layer,perplexity = 30, iter = 2000 ):
     # plt.title("Input of First Layer",fontsize = 5)
     plt.xticks([])
     plt.legend(loc='best', ncol=2,fancybox=True, shadow=False, fontsize = 2)
-    # plt.savefig('../reports/figures/input_tsne.png')
+    plt.title("TSNE for layer --> {}".format(layer))
+    plt.savefig('../reports/TSNE_figures/{}_{}.png'.format(layer, training_flag))
     plt.show()
     return(tsne_data)
 
@@ -105,8 +106,8 @@ my_testmodel.test()
 """plot confusionmatrix"""
 # my_testmodel.plotConfusionMatrix()
 """plot RDM for input and fully connected layers"""
-# visualization,labels_name= my_testmodel.layer_extractor(train=True)
-my_testmodel.save_layerOutput()
+visualization,labels_name,out= my_testmodel.layer_extractor(train=True)
+# my_testmodel.save_layerOutput()
 # out_fc1= np.load("../data/03_processed/fc1-out.npy")
 # out_fc2= np.load("../data/03_processed/fc2-out.npy")
 # out_fc3= np.load("../data/03_processed/fc3-out.npy")
@@ -114,20 +115,25 @@ my_testmodel.save_layerOutput()
 # my_testmodel.plotRDM(plot_input=False)
 
 
+# +
+
+visualization,labels_name,out= my_testmodel.layer_extractor(train=True)
+my_testmodel.save_layerOutput()
+plot_tsne(labels_name,visualization,"fc1", training_flag= "training")
+plot_tsne(labels_name,visualization,"fc2",training_flag= "training")
+plot_tsne(labels_name,visualization,"fc3",training_flag= "training")
 # -
 
-# my_testmodel.plot_tsne("input")
-# my_testmodel.plot_tsne(labels_test_name,,"fc1")
-# my_testmodel.plot_tsne(labels_test_name,,"fc2")
-# my_testmodel.plot_tsne(labels_test_name,,"fc3")
-visualization,labels_name= my_testmodel.layer_extractor(train=True)
-# my_testmodel.plot_tsne(labels_name,visualization,"input")
-visualization,labels_name= my_testmodel.layer_extractor(train=False)
-plot_tsne(labels_name,visualization,"fc1")
-plot_tsne(labels_name,visualization,"fc2")
-plot_tsne(labels_name,visualization,"fc3")
+plot_tsne(labels_name,visualization,"input",training_flag= "training")
 
-rdm = my_testmodel.plotRDM(plot_input=False)
+visualization,labels_name,out= my_testmodel.layer_extractor(train=False)
+my_testmodel.save_layerOutput(train=False)
+plot_tsne(labels_name,visualization,"fc1",training_flag= "testing")
+plot_tsne(labels_name,visualization,"fc2",training_flag= "testing")
+plot_tsne(labels_name,visualization,"fc3",training_flag= "testing")
+
+
+rdm = my_testmodel.plotRDM(plot_input=True)
 
 
 my_testmodel.plotRDM(plot_input=True)

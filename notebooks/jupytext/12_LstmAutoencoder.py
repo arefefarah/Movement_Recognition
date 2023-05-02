@@ -56,24 +56,23 @@ data_dict = data_loader.load_data_dict(path_file)
 data_dict.keys()
 # np.unique(data_dict["labels_name"])
 data = data_dict['input_model']
-train_input = torch.Tensor(data[0:1050,:,:])
+train_input = torch.Tensor(data[0:1050,:,0:633])
 #  train_Set should be ==>  [num_examples, seq_len, *num_features]
 train_set  = train_input.permute(0,2,1)
 train_set.shape
-test_input = torch.Tensor(data[1050:1250,:,:])
+test_input = torch.Tensor(data[1050:1250,:,0:633])
 test_set  = test_input.permute(0,2,1)
-val_input = torch.Tensor(data[1250:1319,:,:])
+val_input = torch.Tensor(data[1250:1319,:,0:633])
 val_set  = val_input.permute(0,2,1)
 val_set.shape
 
 
-seq_len, n_features = 633 , 28
+# +
 
-test_input = torch.Tensor(data[1050:1250,:,:])
-test_set  = test_input.permute(0,2,1)
-val_input = torch.Tensor(data[1250:1319,:,:])
-val_set  = val_input.permute(0,2,1)
-val_set.shape
+train_set
+# -
+
+seq_len, n_features = train_set.shape[1], train_set.shape[2]
 
 # +
 # functions:
@@ -82,7 +81,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Encoder(nn.Module):
 
-  def __init__(self, seq_len, n_features, embedding_dim=7):
+  def __init__(self, seq_len, n_features, embedding_dim= 7):
     super(Encoder, self).__init__()
 
     self.seq_len, self.n_features = seq_len, n_features
@@ -116,7 +115,7 @@ class Encoder(nn.Module):
 
 class Decoder(nn.Module):
 
-  def __init__(self, seq_len, input_dim=7, n_features=28):
+  def __init__(self, seq_len, input_dim = 7, n_features=28):
     super(Decoder, self).__init__()
 
     self.seq_len, self.input_dim = seq_len, input_dim
@@ -124,19 +123,21 @@ class Decoder(nn.Module):
 
     self.rnn1 = nn.LSTM(
       input_size=input_dim,
-      hidden_size=input_dim,
+      hidden_size=2*input_dim,
       num_layers=1,
       batch_first=True
     )
 
     self.rnn2 = nn.LSTM(
-      input_size=input_dim,
-      hidden_size=self.hidden_dim,
+      # input_size=input_dim,
+      input_size=2*input_dim,
+      # hidden_size=self.hidden_dim,
+      hidden_size= self.n_features,
       num_layers=1,
       batch_first=True
     )
 
-    self.output_layer = nn.Linear(self.hidden_dim, self.n_features)
+    # self.output_layer = nn.Linear(self.hidden_dim, self.n_features)
 
   def forward(self, x):
     # print("first forward in decoder" , x.shape)
@@ -147,16 +148,18 @@ class Decoder(nn.Module):
     x, (hidden_n, cell_n) = self.rnn1(x)
     x, (hidden_n, cell_n) = self.rnn2(x)
     # print(x.shape, "  forward decoder")
-    x = x.reshape((self.seq_len, self.hidden_dim))
-
-    return self.output_layer(x)
+    # x = x.reshape((self.seq_len, self.hidden_dim))
+    
+    x = x.reshape((self.seq_len, self.n_features))
+    # return self.output_layer(x)
+    return( x)
   
 
   
 
 class RecurrentAutoencoder(nn.Module):
 
-  def __init__(self, seq_len, n_features, embedding_dim=7):
+  def __init__(self, seq_len, n_features, embedding_dim=128):
     super(RecurrentAutoencoder, self).__init__()
 
     # print("seq_len ", seq_len, "num of features ", n_features)
@@ -171,16 +174,12 @@ class RecurrentAutoencoder(nn.Module):
     return x
 
 
-# -
-
-print(seq_len, n_features)
-
-
 # +
 #  Training
 
 def train_model(model, train_dataset, val_dataset, n_epochs):
   optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+  # or nn.L1loss(reduction = "sum")
   criterion = MSELoss(reduction='sum').to(device)
   history = dict(train=[], val=[])
 
@@ -244,9 +243,5 @@ model, history, val_data_predicted = train_model(
   n_epochs=100
 )
 # -
-
-val_data_predicted[1].shape
-
-val_set[1]
 
 

@@ -127,8 +127,8 @@ for joint in joints:
         
         plt.xticks(range(len(tick_names)),tick_names, rotation=90)
         plt.yticks(range(len(tick_names)),tick_names)
-        plt.xlabel('predicted move')
-        plt.ylabel('real move')
+        # plt.xlabel('predicted move')
+        # plt.ylabel('real move')
         plt.title("{}_{}".format(joint,f).replace("1_", "_") )
         plt.clim((0,45))
         plt.colorbar()
