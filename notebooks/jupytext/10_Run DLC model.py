@@ -16,6 +16,7 @@
 # #### This notebook is for loading data from Deeplabcut and running classification model 
 
 # +
+import sys
 sys.path.insert(0, '../')
 import movement_classifier.utils as utils
 import movement_classifier.data_loader as data_loader
@@ -24,7 +25,7 @@ import movement_classifier.reverse_model as reverse_model
 
 from os.path import dirname, join as pjoin
 import os
-import sys
+
 import math
 
 import dlc2kinematics
@@ -44,8 +45,8 @@ import scipy.io as sio
 
 """Load raw data and create Dataframe of all subjects and their movements and save them"""
 min_length,max_length,_,_ = data_loader.timelength_loader("../data/01_raw/F_Subjects")
-sub_info,movement_name_list,subjects = data_loader.csvSubject_loader("../data/01_raw/CSV_files",min_length,max_length,method="padding")
-data_loader.save_data(sub_info, movement_name_list,subjects, method = "padding")
+sub_info,movement_name_list,subjects = data_loader.csvSubject_loader("../data/01_raw/CSV_files",min_length,max_length,method="interpolation")
+data_loader.save_data(sub_info, movement_name_list,subjects, method = "interpolation")
 
 """load dataframes for the modelling"""
 path_file = "../data/03_processed/padding"

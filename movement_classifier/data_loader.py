@@ -19,6 +19,7 @@ from sklearn import preprocessing
 from scipy.interpolate import CubicSpline
 import scipy.io as sio
 import torch
+from sklearn.preprocessing import MinMaxScaler
 import torch.nn as nn
 from torch.nn import MaxPool1d
 from torch.utils.data import Dataset
@@ -144,8 +145,10 @@ def csvSubject_loader(dir,min_length,max_length,method = "padding"):
             ref_y = ((df_y["hip2_y"]-df_y["hip1_y"])/2)+ df_y["hip1_y"]
             df_x = df_x.sub(ref_x,axis = 0)
             df_y = df_y.sub(ref_y,axis = 0)
-            df = pd.concat([df_x, df_y], axis=1, join='inner')
-
+            ddf = pd.concat([df_x, df_y], axis=1, join='inner')
+            scaler = MinMaxScaler(feature_range=(-1, 1))
+            df = pd.DataFrame(scaler.fit_transform(ddf), columns=ddf.columns)
+            print(df.shape)
             # add velocity
             # for (columnName, columnData) in df.iteritems():
             #     daa = []
@@ -257,9 +260,11 @@ def csvSubject_loader(dir,min_length,max_length,method = "padding"):
 
 
 def save_data(sub_info, movement_name_list,subjects, method = "padding", freq = None):
-    p=np.array(sub_info)
+    # p=np.array(sub_info)
+    # k = p.shape(0)
+    p = sub_info
     jj = p[0]
-    k =p.shape[0]
+    k =len(p)
     for t in range(k-1):
         jj = np.vstack((jj, p[t+1]))
     
