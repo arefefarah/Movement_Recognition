@@ -5,11 +5,12 @@ import time
 from collections import Counter
 import math
 
-import dlc2kinematics
-import matplotlib.pyplot as plt
+# import dlc2kinematics
+# import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import plotly.express as px
+# import plotly.express as px
+import pickle
 import plotly
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
@@ -18,6 +19,7 @@ import seaborn as sns
 from sklearn import preprocessing
 from scipy.interpolate import CubicSpline
 import scipy.io as sio
+from scipy.stats import zscore
 import torch
 from sklearn.preprocessing import MinMaxScaler
 import torch.nn as nn
@@ -146,9 +148,11 @@ def csvSubject_loader(dir,min_length,max_length,method = "padding"):
             df_x = df_x.sub(ref_x,axis = 0)
             df_y = df_y.sub(ref_y,axis = 0)
             ddf = pd.concat([df_x, df_y], axis=1, join='inner')
-            scaler = MinMaxScaler(feature_range=(-1, 1))
-            df = pd.DataFrame(scaler.fit_transform(ddf), columns=ddf.columns)
-            print(df.shape)
+            # scaler = MinMaxScaler(feature_range=(-1, 1))
+            # cc = scaler.fit_transform(ddf)
+            cc = zscore(ddf, axis = 1)
+            df = pd.DataFrame(cc, columns=ddf.columns)
+            # print(df.shape)
             # add velocity
             # for (columnName, columnData) in df.iteritems():
             #     daa = []
@@ -253,7 +257,8 @@ def csvSubject_loader(dir,min_length,max_length,method = "padding"):
                         all_data.append(m)
             
             sub_info.append(np.array(all_data))  
-
+    # with open('../data/03_processed/interpolation/scaler.pkl', 'wb') as file:
+    #     pickle.dump(scaler, file)
     print("all Dataframs have been created!")
     return(sub_info,movement_name_list,subjects)
 

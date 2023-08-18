@@ -46,7 +46,7 @@ import scipy.io as sio
 """Load raw data and create Dataframe of all subjects and their movements and save them"""
 min_length,max_length,_,_ = data_loader.timelength_loader("../data/01_raw/F_Subjects")
 sub_info,movement_name_list,subjects = data_loader.csvSubject_loader("../data/01_raw/CSV_files",min_length,max_length,method="interpolation")
-data_loader.save_data(sub_info, movement_name_list,subjects, method = "interpolation")
+data_loader.save_data(sub_info, movement_name_list,subjects, method = "padding")
 
 """load dataframes for the modelling"""
 path_file = "../data/03_processed/padding"

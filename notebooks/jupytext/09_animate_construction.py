@@ -14,6 +14,7 @@
 # ---
 
 # +
+import sys
 sys.path.insert(0, '../')
 import movement_classifier.utils as utils
 import movement_classifier.data_loader as data_loader
@@ -32,7 +33,10 @@ from sklearn import preprocessing
 import numpy as np
 import pandas as pd
 from sklearn.manifold import TSNE
+from celluloid import Camera
+# %matplotlib inline
 import plotly.express as px
+import pickle
 import plotly
 from sklearn.decomposition import PCA
 import seaborn as sns
@@ -41,16 +45,39 @@ from IPython.display import HTML
 import celluloid
 # -
 
+# construct animate visualization for each movement sequence(28,633) 
+
 joints = ['ankle1_x', 'knee1_x', 'hip1_x', 'hip2_x', 'knee2_x', 'ankle2_x',
        'wrist1_x', 'elbow1_x', 'shoulder1_x', 'shoulder2_x', 'elbow2_x',
        'wrist2_x', 'chin_x', 'forehead_x', 'ankle1_y', 'knee1_y', 'hip1_y',
        'hip2_y', 'knee2_y', 'ankle2_y', 'wrist1_y', 'elbow1_y', 'shoulder1_y',
        'shoulder2_y', 'elbow2_y', 'wrist2_y', 'chin_y', 'forehead_y']
 
+# +
+"""load data"""
+path_file = "../data/03_processed/interpolation"
+data_dict = data_loader.load_data_dict(path_file)
+data_dict.keys()
+
+data = data_dict['input_model']
+movement_name_list = np.unique(data_dict["labels_name"])
+
+#load latent Rep of autoencoder to visaluzation
+reconst_data = np.load(path_file+"/reconstructRep_lstm.npy")
+reconst_data.shape
+# data = reconst_data
+# -
+
+path = "../reports/autoencoder_input"
+# data = reconst_data
+data_labels = data_dict["labels_name"]
+activities = np.unique(data_dict["labels_name"])
+utils.animate(data,data_labels, activities, path, joints, normalized = True)
+
 
 # +
  
-def df_animate(joint1,amp,freq,joint2 = None):
+def perturb(joint1,amp,freq,joint2 = None):
     sub_info = []
     movement_name_list = []
     min_length,max_length,_,_ = data_loader.timelength_loader("../data/01_raw/F_Subjects")
@@ -152,10 +179,7 @@ def df_animate(joint1,amp,freq,joint2 = None):
 
 # -
 
-# %matplotlib inline
-plt.rcParams['animation.ffmpeg_path'] = '../../../../usr/bin/ffmpeg'
-# %matplotlib inline
-
+# plot animation for perturbed data
 
 # +
 
@@ -163,19 +187,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from IPython.display import HTML
-from celluloid import Camera
-# %matplotlib inline
 
-amp = 30
+
+amp = 1
 joints_test =  ['ankle1_x', 'knee1_x','shoulder1_x',"elbow1_x","wrist1_x"]
 
 # freqs = [0.1,0.2,0.4,0.6,0.8]
-freqs = [0.2,0.5,0.8]
-for joint1 in joints_test:
+freqs = [0]
+for joint1 in joints:
     for freq in freqs:
         joint2 = joint1.replace("1","2")
-        all_data,movement_name_list = df_animate(joint1,amp,freq,joint2 )
-
+        all_data,movement_name_list = perturb(joint1,amp,freq,joint2 )
+        print(all_data.shape)
         # Animate a single trajectory
         pick_traj = 5      # Select a trajectory to simulate
 
@@ -238,24 +261,3 @@ for joint1 in joints_test:
 
     
 
-# -
-
-path_file = "../data/03_processed/frequency"
-data_dict = data_loader.load_data_dict(path_file)
-data_array = data_dict["input_model"]
-data_dict["labels_name"].shape
-sample = data_array[1,:,:]
-sample.shape
-
-
-# %matplotlib inline
-
-# !pwd
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-from IPython import display
-from IPython.display import HTML
-from celluloid import Camera
-# %matplotlib inline
-plt.rcParams['animation.ffmpeg_path'] = '../../../../usr/bin/ffmpeg'
-# %matplotlib inline

@@ -6,6 +6,9 @@ import numpy as np
 import scipy.io as sio
 import torch
 from tqdm import tqdm
+from celluloid import Camera
+import matplotlib.pyplot as plt
+import pandas as pd
 
 from human_body_prior.body_model.body_model import BodyModel
 from human_body_prior.tools.omni_tools import copy2cpu as c2c
@@ -61,7 +64,60 @@ def matobj2dict(matobj):
             ndict[fieldname] = attr
     return ndict
 
+### plot & save animation of one sample trajectory for each activity
 
+def animate(data,data_labels, activities, path, joints, normalized = True):    # activities = movement_name_list          
+                                                    # data_labels = data_dict["labels_name"]
+                                                    # data ==> all trajectories (1319,28,633)  
+                                                    # folder path to save animations 
+
+    pick_traj = 5      # Select a trajectory to simulate
+    fig, ax = plt.subplots(figsize=(3,4))
+    
+    if normalized:
+        ax.set(xlim=(-5, 5), ylim=(5, -5))
+    else:
+        ax.set(xlim=(-700, 700), ylim=(700, -700))
+    
+    ax.get_xaxis().set_label_coords(0.5, 0.12)
+    for motion in activities:
+       
+        camera = Camera(fig)
+        print(motion)
+        ind = np.where(data_labels== motion)
+        seq = data[ind[0][0]]
+        df = pd.DataFrame(seq).transpose()
+        
+        df.columns = joints
+        t_range = df.shape[0]
+        
+        for t in range(t_range):
+
+            # Projectile's trajectory
+            x = {}
+            y = {}
+            for j in range(int(len(joints)/2)):
+                    x[joints[j]] = df[joints[j]].to_numpy()
+                    y[joints[j+14]] = df[joints[j+14]].to_numpy()
+                    # Show Projectile's location
+                    ax.plot(x[joints[j]][t], y[joints[j+14]][t], marker='o', markersize=1, markeredgecolor='r', markerfacecolor='r')
+                    
+            # Show Projectile's trajectory
+            ax.plot([x["shoulder1_x"][t],x["chin_x"][t], x["shoulder2_x"][t]],[y["shoulder1_y"][t], y["chin_y"][t],y["shoulder2_y"][t]],'ro-')
+            ax.plot([x["shoulder1_x"][t],x["elbow1_x"][t], x["wrist1_x"][t]],[y["shoulder1_y"][t], y["elbow1_y"][t],y["wrist1_y"][t]],'ro-')
+            ax.plot([x["shoulder2_x"][t],x["elbow2_x"][t], x["wrist2_x"][t]],[y["shoulder2_y"][t], y["elbow2_y"][t],y["wrist2_y"][t]],'ro-')
+            ax.plot([x["shoulder1_x"][t],x["hip1_x"][t], x["hip2_x"][t], x["shoulder2_x"][t]],[y["shoulder1_y"][t], y["hip1_y"][t],y["hip2_y"][t],
+            y["shoulder2_y"][t]],'ro-')
+            ax.plot([x["hip1_x"][t],x["knee1_x"][t], x["ankle1_x"][t]],[y["hip1_y"][t],y["knee1_y"][t], y["ankle1_y"][t]],'ro-')
+            ax.plot([x["hip2_x"][t],x["knee2_x"][t], x["ankle2_x"][t]],[y["hip2_y"][t],y["knee2_y"][t], y["ankle2_y"][t]],'ro-')
+            ax.plot([x["forehead_x"][t],x["chin_x"][t]],[y["forehead_y"][t],y["chin_y"][t]],'ro-') 
+
+            # Capture frame
+            camera.snap()
+        anim = camera.animate(interval = 60, repeat = False)
+        anim.save(path+'/{}.mp4'.format(motion))
+        
+     
 def pretty_dict(ndict, indent=0, print_type=False):
     """Visualizes the tree-like structure of a dictionary
     Arguments:
