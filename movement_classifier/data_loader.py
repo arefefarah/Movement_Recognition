@@ -19,6 +19,8 @@ import seaborn as sns
 from sklearn import preprocessing
 from scipy.interpolate import CubicSpline
 import scipy.io as sio
+import numpy as np
+from scipy.signal import medfilt
 from scipy.stats import zscore
 import torch
 from sklearn.preprocessing import MinMaxScaler
@@ -46,6 +48,8 @@ def mat2dict(filename):
             if isinstance(data[key], sio.matlab.mio5_params.mat_struct):
                 data_out = matobj2dict(data[key])
     return data_out
+
+
 
 def matobj2dict(matobj):
     """A recursive function which converts nested mat object
@@ -148,10 +152,34 @@ def csvSubject_loader(dir,min_length,max_length,method = "padding"):
             df_x = df_x.sub(ref_x,axis = 0)
             df_y = df_y.sub(ref_y,axis = 0)
             ddf = pd.concat([df_x, df_y], axis=1, join='inner')
-            # scaler = MinMaxScaler(feature_range=(-1, 1))
-            # cc = scaler.fit_transform(ddf)
+            
+
+            # ### remove outliers and replace them with upper or lower values
+            # for column in ddf.columns:
+            #     series = ddf[column]
+            #     data_mean, data_std = np.mean(series), np.std(series)
+            #     cut_off = data_std * 8
+            #     lower, upper = data_mean - cut_off, data_mean + cut_off
+            #     # ddf = ddf[(ddf[column] > lower) & (ddf[column] < upper)]
+            #     ddf[column] = np.where((ddf[column] < lower) , lower, ddf[column])
+            #     ddf[column] = np.where((ddf[column] > upper) , upper, ddf[column])
+            
+            z_scores = np.abs(zscore(ddf))
+            # Define threshold for outliers
+            threshold = 3
+
+            # Replace outliers with the previous value in the same column
+            for col in ddf.columns:
+                for i in range(1, len(ddf)):
+                    if z_scores[col].iloc[i] > threshold:
+                        ddf[col].iloc[i] = ddf[col].iloc[i-1]
+
+
+
+            ### normalize data
             cc = zscore(ddf, axis = 1)
             df = pd.DataFrame(cc, columns=ddf.columns)
+           
             # print(df.shape)
             # add velocity
             # for (columnName, columnData) in df.iteritems():
