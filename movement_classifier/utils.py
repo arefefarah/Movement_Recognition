@@ -10,8 +10,8 @@ from celluloid import Camera
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from human_body_prior.body_model.body_model import BodyModel
-from human_body_prior.tools.omni_tools import copy2cpu as c2c
+# from human_body_prior.body_model.body_model import BodyModel
+# from human_body_prior.tools.omni_tools import copy2cpu as c2c
 
 
 

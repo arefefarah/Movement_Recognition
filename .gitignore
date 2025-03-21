@@ -1,7 +1,19 @@
 # Data folder
-data/
-scripts and data for server/
+# data/
+# scripts and data for server/
+# # Ignore everything
+# *
 
+# # But not these directories
+# !movement_classifier/
+# !movement_primitives/
+
+# # Include all files and subdirectories in the excepted directories
+# !movement_classifier/**
+# !movement_primitives/**
+
+# # Don't ignore .gitignore itself
+# !.gitignore
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

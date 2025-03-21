@@ -1,0 +1,26 @@
+{
+  "mapping": {
+    "hand_clapping": 0,
+    "jogging": 1,
+    "walking": 2,
+    "cross_legged_sitting": 3,
+    "vertical_jumping": 4,
+    "crawling": 5,
+    "hand_waving": 6,
+    "running_in_spot": 7,
+    "checking_watch": 8,
+    "kicking": 9,
+    "taking_photo": 10,
+    "cross_arms": 11,
+    "jumping_jacks": 12,
+    "scratching_head": 13,
+    "throw/catch": 14,
+    "pushups_rm": 15,
+    "pointing": 16,
+    "sitting_down": 17,
+    "sideways": 18,
+    "phone_talking": 19,
+    "stretching": 20
+  },
+  "counter": 21
+}
