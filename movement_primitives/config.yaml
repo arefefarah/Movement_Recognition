@@ -1,0 +1,65 @@
+    # Project definitions (do not edit)
+Task: myDLC_motion_fullmovie
+scorer: Arefeh
+date: Oct26
+multianimalproject: false
+identity:
+
+    # Project path (change when moving around)
+project_path: /content/myDLC_motion_fullmovie-Arefeh-2021-10-26
+
+    # Annotation data set configuration (and individual video cropping parameters)
+video_sets:
+  /content/myDLC_motion_fullmovie-Arefeh-2021-10-26/videos/F_PG1_Subject_1_Ldownsampled.avi:
+    crop: 0, 300, 0, 200
+  /content/myDLC_motion_fullmovie-Arefeh-2021-10-26/videos/F_PG1_Subject_1_L.avi:
+    crop: 0, 800, 0, 600
+bodyparts:
+- ankle1
+- knee1
+- hip1
+- hip2
+- knee2
+- ankle2
+- wrist1
+- elbow1
+- shoulder1
+- shoulder2
+- elbow2
+- wrist2
+- chin
+- forehead
+start: 0
+stop: 1
+numframes2pick: 20
+
+    # Plotting configuration
+skeleton: []
+skeleton_color: black
+pcutoff: 0.6
+dotsize: 6
+alphavalue: 0.7
+colormap: rainbow
+
+    # Training,Evaluation and Analysis configuration
+TrainingFraction:
+- 0.95
+iteration: 0
+default_net_type: resnet_101
+default_augmenter: default
+snapshotindex: -1
+batch_size: 8
+
+    # Cropping Parameters (for analysis and outlier frame detection)
+cropping: false
+    #if cropping is true for analysis, then set the values here:
+x1: 0
+x2: 640
+y1: 277
+y2: 624
+
+    # Refinement configuration (parameters from annotation dataset configuration also relevant in this stage)
+corner2move2:
+- 50
+- 50
+move2corner: true

@@ -1,0 +1,57 @@
+# Project definitions
+Task: human_pose
+scorer: pose_analyzer
+date: Jan20
+# Project path
+project_path: /fakepath
+
+# Plotting configuration
+skeleton:
+  # Left leg
+  - - hip1
+    - knee1
+  - - knee1
+    - ankle1
+  # Right leg
+  - - hip2
+    - knee2
+  - - knee2
+    - ankle2
+  # Left arm
+  - - shoulder1
+    - elbow1
+  - - elbow1
+    - wrist1
+  # Right arm
+  - - shoulder2
+    - elbow2
+  - - elbow2
+    - wrist2
+  # Torso and head
+  - - hip1
+    - hip2
+  - - shoulder1
+    - shoulder2
+  - - chin
+    - forehead
+
+skeleton_color: black
+pcutoff: 0.8
+colormap: cool
+dotsize: 15
+alphaValue: 0.8
+markerType: '*'
+markerColor: r
+
+# Camera configuration
+num_cameras: 2
+camera_names:
+- camera-1
+- camera-2
+scorername_3d: DLC_3D
+trainingsetindex_camera-1: 0
+trainingsetindex_camera-2: 0
+config_file_camera-1: fakepath/config.yaml
+config_file_camera-2: fakepath/config.yaml
+shuffle_camera-1: 1
+shuffle_camera-2: 1

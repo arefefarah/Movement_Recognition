@@ -1,0 +1,140 @@
+    # Project definitions (do not edit)
+Task: MoVi3D
+scorer: Arefeh
+date: Jan31
+multianimalproject:
+identity:
+
+    # Project path (change when moving around)
+project_path: /data1/users/arefeh/movementProject/DLC/MoVi_DLC/MoVi3D-Arefeh-2025-01-31-3d
+
+    # Annotation data set configuration (and individual video cropping parameters)
+video_sets:
+bodyparts:
+- ankle1
+- knee1
+- hip1
+- hip2
+- knee2
+- ankle2
+- wrist1
+- elbow1
+- shoulder1
+- shoulder2
+- elbow2
+- wrist2
+- chin
+- forehead
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+start: 0
+stop: 1
+numframes2pick: 20
+
+    # Plotting configuration
+skeleton:
+- - ankle1
+  - knee1
+- - knee1
+  - hip1
+- - ankle2
+  - knee2
+- - knee2
+  - hip2
+- - hip1
+  - hip2
+- - wrist1
+  - elbow1
+- - elbow1
+  - shoulder1
+- - wrist2
+  - elbow2
+- - elbow2
+  - shoulder2
+- - shoulder1
+  - shoulder2
+- - chin
+  - forehead
+- - chin
+  - shoulder1
+- - chin
+  - shoulder2
+skeleton_color: black
+pcutoff: 0.2
+dotsize: 6
+alphavalue: 0.7
+colormap: jet
+
+    # Training,Evaluation and Analysis configuration
+TrainingFraction:
+- 0.95
+iteration: 0
+default_net_type: resnet_101
+default_augmenter: default
+snapshotindex: -1
+batch_size: 8
+
+    # Cropping Parameters (for analysis and outlier frame detection)
+cropping: false
+    #if cropping is true for analysis, then set the values here:
+x1: 0
+x2: 640
+y1: 277
+y2: 624
+
+    # Refinement configuration (parameters from annotation dataset configuration also relevant in this stage)
+corner2move2:
+- 50
+- 50
+move2corner: true
+alphaValue: 0.8
+markerType: '*'
+markerColor: r
+num_cameras: 2
+camera_names:
+- camera-1
+- camera-2
+scorername_3d: Arefeh_3D
+trainingsetindex_camera-1: 0
+trainingsetindex_camera-2: 0
+scorer_3d: DLC_3D
+camera_type: Grasshopper
+checker_board_size:
+- 8
+- 6
+triangulation_params:
+  calibration_file: camera_matrix/stereo_params.pickle
+  cam1_config: camera_matrix/camera-1_intrinsic_params.pickle
+  cam2_config: camera_matrix/camera-2_intrinsic_params.pickle
+config_file_camera-1: 
+  /data1/users/arefeh/movementProject/DLC/MoVi_DLC/2d_DLC/Cam1_MoVi_2D-Arefeh-2025-02-08/config.yaml
+config_file_camera-2: 
+  /data1/users/arefeh/movementProject/DLC/MoVi_DLC/2d_DLC/Cam2_MoVi_2D-Arefeh-2025-02-08/config.yaml
+shuffle_camera-1: 1
+shuffle_camera-2: 1
