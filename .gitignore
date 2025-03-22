@@ -4,6 +4,7 @@ potr/
 my tests_GaitForMer/
 movement_primitives/C3D.zip 
 movement_primitives/BVH.zip
+movement_primitives/BVH_small/**
 # scripts and data for server/
 # # Ignore everything
 # *
