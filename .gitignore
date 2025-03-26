@@ -159,3 +159,35 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+Gaitformer_env/
+MoVi
+movement_classifier/.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+notebooks/000_test.ipynb
+notebooks/00_template.ipynb
+notebooks/01_bc_example_notebook.ipynb
+notebooks/01_data_visualization.ipynb
+notebooks/02_data_DLC_loading.ipynb
+notebooks/03_model_DLC.ipynb
+notebooks/03_plot_movement.ipynb
+notebooks/04_data_amass_loading.ipynb
+notebooks/05_model-AMASS.ipynb
+notebooks/06_RDM_analysis.ipynb
+notebooks/07_Tsne_analysis.ipynb
+notebooks/08_frequency_analysis.ipynb
+notebooks/09_animate_construction.ipynb
+notebooks/10_Run
+notebooks/11_Run
+notebooks/12_LstmAutoencoder.ipynb
+notebooks/13_Deep4DAutoencoder
+notebooks/16_analyze_Lstmmodel.ipynb
+notebooks/PRACTICE.ipynb
+notebooks/Run
+notebooks/Run
+notebooks/animate_construction.ipynb
+notebooks/enso-xarray.ipynb
+notebooks/utils.py
+sample_Subject_15.json
+sample_Subject_15.mp4
+scripts
+test.ipynb
