@@ -186,7 +186,7 @@ def process_bvh_data(bvh_data, num_points=50):
             # )[:, num_points//2:3*num_points//2]
             
             processed_segments.append(filtered_frames.T) # the format of each segment should be [signals,time]
-            print(f"Processed segment shape: {filtered_frames.T.shape}") 
+            # print(f"Processed segment shape: {filtered_frames.T.shape}") 
             
         except Exception as e:
             print(f"Error processing mocap data: {str(e)}")
