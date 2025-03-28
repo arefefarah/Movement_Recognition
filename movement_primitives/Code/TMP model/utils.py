@@ -13,6 +13,10 @@ from mpl_toolkits.mplot3d import Axes3D
 from scipy.spatial.transform import Rotation
 import cv2
 import scipy.io as sio
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import json
+from matplotlib.gridspec import GridSpec
 
 
 
@@ -102,96 +106,8 @@ def visualize_frame_3d(df, frame_id=0):
     
     return fig
 
-
-
-# def calculate_joint_angles(df_3d):
-#     # Get unique frames
-#     frames = df_3d['frame_id'].unique()
-    
-#     # Define joint hierarchy (parent-child relationships)
-#     # For Human3.6M skeleton
-#     parent_indices = [-1, 0, 1, 2, 0, 4, 5, 0, 7, 8, 9, 8, 11, 12, 8, 14, 15]
-#     H36M_KEYPOINT_NAMES = [
-#     'Hip', 'RHip', 'RKnee', 'RAnkle', 'LHip', 'LKnee', 'LAnkle',
-#     'Spine', 'Thorax', 'Neck', 'Head',
-#     'LShoulder', 'LElbow', 'LWrist', 'RShoulder', 'RElbow', 'RWrist'
-# ]
-#     joint_angles = []
-    
-#     for frame_id in frames:
-#         frame_data = df_3d[df_3d['frame_id'] == frame_id]
-        
-#         # Extract joint positions for this frame
-#         positions = np.zeros((len(H36M_KEYPOINT_NAMES), 3))
-#         for i, joint_name in enumerate(H36M_KEYPOINT_NAMES):
-#             joint_row = frame_data[frame_data['joint_name'] == joint_name].iloc[0]
-#             positions[i] = [joint_row['x_3d'], joint_row['y_3d'], joint_row['z_3d']]
-        
-#         # Calculate rotation for each joint
-#         rotations = []
-        
-#         for joint_idx in range(len(H36M_KEYPOINT_NAMES)):
-#             if parent_indices[joint_idx] == -1:
-#                 # Root joint - store global position and orientation
-#                 rotations.append(np.eye(3))  # Identity rotation for root
-#                 continue
-            
-#             parent_idx = parent_indices[joint_idx]
-            
-#             # Calculate bone direction vectors
-#             child_pos = positions[joint_idx]
-#             parent_pos = positions[parent_idx]
-#             bone_vec = child_pos - parent_pos
-            
-#             if np.linalg.norm(bone_vec) < 1e-10:
-#                 # Bones with zero length - use identity
-#                 rotations.append(np.eye(3))
-#                 continue
-                
-#             # Normalize bone vector
-#             bone_vec = bone_vec / np.linalg.norm(bone_vec)
-            
-#             # Create local coordinate system
-#             # Y axis along the bone
-#             y_axis = bone_vec
-            
-#             # Find a perpendicular vector for X axis
-#             # Usually choose a direction that aligns with anatomical planes
-#             if abs(y_axis[1]) < 0.9:  # If Y isn't nearly parallel to world Y
-#                 x_axis = np.cross(np.array([0, 1, 0]), y_axis)
-#             else:
-#                 x_axis = np.cross(np.array([1, 0, 0]), y_axis)
-                
-#             x_axis = x_axis / np.linalg.norm(x_axis)
-            
-#             # Z completes the right-handed coordinate system
-#             z_axis = np.cross(x_axis, y_axis)
-#             z_axis = z_axis / np.linalg.norm(z_axis)
-            
-#             # Create rotation matrix (local coordinate system)
-#             rot_matrix = np.column_stack((x_axis, y_axis, z_axis))
-            
-#             rotations.append(rot_matrix)
-        
-#         # Convert rotation matrices to Euler angles or quaternions
-#         euler_angles = []
-#         for rot_matrix in rotations:
-#             r = Rotation.from_matrix(rot_matrix)
-#             # Use 'xyz' for typical BVH format
-#             euler = r.as_euler('xyz', degrees=True)
-#             euler_angles.append(euler)
-        
-#         # Store root position and all joint rotations for this frame
-#         frame_angles = {
-#             'frame_id': frame_id,
-#             'root_position': positions[0],  # Hip position
-#             'joint_rotations': euler_angles
-#         }
-        
-#         joint_angles.append(frame_angles)
-    
-#     return joint_angles
-
+import numpy as np
+from scipy.spatial.transform import Rotation
 
 def create_h36m_bvh(df_3d, output_path, fps=120):
     """
@@ -200,7 +116,7 @@ def create_h36m_bvh(df_3d, output_path, fps=120):
     Args:
         df_3d: DataFrame with 3D joint positions
         output_path: Path to save the BVH file
-        fps: Frames per second (120 for your reference BVH)
+        fps: Frames per second
     """
     # Define joint hierarchy (which joint is parent of which)
     h36m_parent_indices = [-1, 0, 1, 2, 0, 4, 5, 0, 7, 8, 9, 8, 11, 12, 8, 14, 15]
@@ -217,8 +133,9 @@ def create_h36m_bvh(df_3d, output_path, fps=120):
         f.write("HIERARCHY\n")
         f.write(f"ROOT {joint_names[0]}\n")  # Hip as root
         f.write("{\n")
-        f.write("  OFFSET 0 0 0\n")  # Root starts at origin
-        f.write("  CHANNELS 6 Xposition Yposition Zposition Zrotation Xrotation Yrotation\n")
+        f.write("  OFFSET 0 100 0\n")  # Root starts elevated like in the working example
+        # Change position order to match working example
+        f.write("  CHANNELS 6 Xposition Zposition Yposition Zrotation Xrotation Yrotation\n")
         
         # Function to recursively write joint hierarchy
         def write_joint_hierarchy(joint_idx, level=1):
@@ -239,7 +156,8 @@ def create_h36m_bvh(df_3d, output_path, fps=120):
                 # Write joint definition
                 f.write(f"{indent}JOINT {joint_names[child_idx]}\n")
                 f.write(f"{indent}{{\n")
-                f.write(f"{indent}  OFFSET {offset[0]:.6f} {offset[1]:.6f} {offset[2]:.6f}\n")
+                # Swap y and z coordinates to match BVH convention
+                f.write(f"{indent}  OFFSET {offset[0]:.6f} {offset[2]:.6f} {offset[1]:.6f}\n")
                 f.write(f"{indent}  CHANNELS 3 Zrotation Xrotation Yrotation\n")
                 
                 # Recursively process children
@@ -251,7 +169,8 @@ def create_h36m_bvh(df_3d, output_path, fps=120):
             if not children:
                 f.write(f"{indent}End Site\n")
                 f.write(f"{indent}{{\n")
-                f.write(f"{indent}  OFFSET 0 10 0\n")  # Default end site offset
+                # Match the end site in working BVH
+                f.write(f"{indent}  OFFSET 0 -2 15\n")
                 f.write(f"{indent}}}\n")
         
         # Write the full hierarchy
@@ -275,20 +194,31 @@ def create_h36m_bvh(df_3d, output_path, fps=120):
                     positions[idx] = joint_row[['x_3d', 'y_3d', 'z_3d']].values[0]
             
             # Calculate rotations for all joints
-            rotations = calculate_joint_rotations(positions, h36m_parent_indices)
+            rotations = calculate_joint_rotations_fixed(positions, h36m_parent_indices)
             
             # Format motion data line
             motion_line = []
             
             # Root position (scale to match your reference)
             root_pos = positions[0] * 100  # Scale to centimeters
-            motion_line.extend([root_pos[0], root_pos[1], root_pos[2]])
+            
+            # Apply the Y-Z swap to match working example
+            motion_line.extend([root_pos[0], root_pos[2], root_pos[1]])
             
             # Add rotations for all joints in the correct order
             for joint_idx in range(len(joint_names)):
                 if joint_idx in rotations:
-                    # Get Euler angles in ZXY order (match your BVH format)
+                    # Calculate Euler angles in ZXY order
                     euler_angles = rotations[joint_idx].as_euler('zxy', degrees=True)
+                    
+                    # Root rotation correction (match working example)
+                    if joint_idx == 0:
+                        # Rotate 180 degrees around Z-axis to match working BVH
+                        euler_angles[0] += 180.0
+                        # Ensure angles are in -180 to 180 range
+                        if euler_angles[0] > 180:
+                            euler_angles[0] -= 360
+                        
                     motion_line.extend(euler_angles)
                 else:
                     # Default rotation for missing joint
@@ -299,14 +229,72 @@ def create_h36m_bvh(df_3d, output_path, fps=120):
     
     print(f"BVH file created at {output_path}")
 
-def calculate_joint_rotations(positions, parent_indices):
-    """Calculate joint rotations from positions"""
+def calculate_joint_rotations_fixed(positions, parent_indices):
+    """Calculate joint rotations from positions with fixed coordinate system"""
     rotations = {}
     
-    for joint_idx in range(len(positions)):
-        if parent_indices[joint_idx] == -1:
-            # Root joint - use identity rotation
-            rotations[joint_idx] = Rotation.from_euler('zxy', [0, 0, 0], degrees=True)
+    # Define the BVH coordinate system convention
+    FORWARD_AXIS = np.array([0, 0, 1])  # Z-forward 
+    UP_AXIS = np.array([0, 1, 0])       # Y-up
+    
+    # First, calculate orientation for root
+    if 0 in positions:
+        # Find spine index which is typically at index 7 in H36M
+        spine_idx = 7  # Usually this is the spine in H36M
+        
+        if spine_idx in positions:
+            # Use spine direction to determine orientation
+            spine_dir = positions[spine_idx] - positions[0]
+            spine_dir = spine_dir / np.linalg.norm(spine_dir)
+            
+            # Set up initial coordinate system for root
+            # We want spine_dir to align with Y-axis in BVH
+            y_axis = spine_dir
+            
+            # Find hip joints for left-right axis
+            left_hip_idx = 4  # LHip in H36M
+            right_hip_idx = 1  # RHip in H36M
+            
+            if left_hip_idx in positions and right_hip_idx in positions:
+                # Use hips to define left-right axis
+                left_hip = positions[left_hip_idx]
+                right_hip = positions[right_hip_idx]
+                side_dir = right_hip - left_hip
+                side_dir = side_dir / np.linalg.norm(side_dir)
+                
+                # Make sure side_dir is perpendicular to spine_dir
+                side_dir = side_dir - np.dot(side_dir, y_axis) * y_axis
+                side_dir = side_dir / np.linalg.norm(side_dir)
+                
+                x_axis = side_dir
+            else:
+                # Fallback if hips not available
+                x_axis = np.cross(FORWARD_AXIS, y_axis)
+                if np.linalg.norm(x_axis) < 1e-6:
+                    x_axis = np.cross(UP_AXIS, y_axis)
+                x_axis = x_axis / np.linalg.norm(x_axis)
+            
+            # Complete the coordinate system
+            z_axis = np.cross(x_axis, y_axis)
+            z_axis = z_axis / np.linalg.norm(z_axis)
+            
+            # Create rotation matrix for root
+            root_matrix = np.column_stack((x_axis, y_axis, z_axis))
+            
+            # Apply rotation to transform coordinate system to match BVH viewer's expectation
+            # This is the key correction to fix the top-down view issue
+            fix_rotation = Rotation.from_euler('xyz', [90, 0, 0], degrees=True).as_matrix()
+            adjusted_matrix = np.dot(fix_rotation, root_matrix)
+            
+            rotations[0] = Rotation.from_matrix(adjusted_matrix)
+        else:
+            # Fallback if no spine found
+            rotations[0] = Rotation.from_euler('xyz', [90, 0, 0], degrees=True)
+    
+    # Second pass: compute joint orientations based on bone directions
+    for joint_idx in sorted(positions.keys()):
+        if joint_idx == 0 or parent_indices[joint_idx] == -1:
+            # Root already handled
             continue
         
         parent_idx = parent_indices[joint_idx]
@@ -324,29 +312,61 @@ def calculate_joint_rotations(positions, parent_indices):
         # Normalize bone vector
         bone_vec = bone_vec / np.linalg.norm(bone_vec)
         
-        # Create local coordinate system
-        # Y axis along bone direction
-        y_axis = bone_vec
+        # In BVH convention, bones typically point along Y axis
+        parent_y = np.array([0, 1, 0])  # Y axis in local space
         
-        # Create X axis perpendicular to Y and global Z
-        z_global = np.array([0, 0, 1])
-        x_axis = np.cross(y_axis, z_global)
-        
-        if np.linalg.norm(x_axis) < 1e-6:
-            # If Y is parallel to Z, use another reference vector
-            x_axis = np.cross(y_axis, np.array([1, 0, 0]))
-        
-        x_axis = x_axis / np.linalg.norm(x_axis)
-        
-        # Z completes right-handed system
-        z_axis = np.cross(x_axis, y_axis)
-        z_axis = z_axis / np.linalg.norm(z_axis)
-        
-        # Create rotation matrix and convert to scipy rotation
-        rot_matrix = np.column_stack((x_axis, y_axis, z_axis))
-        rotations[joint_idx] = Rotation.from_matrix(rot_matrix)
+        # Calculate rotation that aligns parent_y with bone_vec
+        if parent_idx in rotations:
+            # Get parent's global orientation
+            parent_matrix = rotations[parent_idx].as_matrix()
+            
+            # Transform parent_y to global space
+            parent_y_global = parent_matrix @ parent_y
+            
+            # Calculate rotation from parent_y_global to bone_vec
+            rot_axis = np.cross(parent_y_global, bone_vec)
+            
+            if np.linalg.norm(rot_axis) < 1e-6:
+                # Vectors are parallel
+                dot_product = np.dot(parent_y_global, bone_vec)
+                if dot_product > 0:
+                    # Same direction, no rotation
+                    local_rotation = Rotation.from_euler('zxy', [0, 0, 0], degrees=True)
+                else:
+                    # Opposite direction, 180° rotation around X axis
+                    local_rotation = Rotation.from_euler('x', 180, degrees=True)
+            else:
+                # Normalize rotation axis
+                rot_axis = rot_axis / np.linalg.norm(rot_axis)
+                
+                # Calculate rotation angle
+                cos_angle = np.clip(np.dot(parent_y_global, bone_vec), -1.0, 1.0)
+                angle = np.arccos(cos_angle)
+                
+                # Create rotation from axis and angle
+                local_rotation = Rotation.from_rotvec(rot_axis * angle)
+            
+            # Combine parent rotation with local rotation
+            rotations[joint_idx] = rotations[parent_idx] * local_rotation
+        else:
+            # No parent rotation, use default
+            rotations[joint_idx] = Rotation.from_euler('zxy', [0, 0, 0], degrees=True)
     
-    return rotations
+    # Convert global rotations to local rotations
+    local_rotations = {}
+    for joint_idx in rotations:
+        if parent_indices[joint_idx] == -1 or parent_indices[joint_idx] not in rotations:
+            # Root or joint with no valid parent rotation
+            local_rotations[joint_idx] = rotations[joint_idx]
+        else:
+            # Calculate local rotation relative to parent
+            parent_rot = rotations[parent_indices[joint_idx]]
+            local_rot = parent_rot.inv() * rotations[joint_idx]
+            local_rotations[joint_idx] = local_rot
+    
+    return local_rotations
+
+
 
 
 def parse_bvh_file(bvh_file_path):
@@ -589,3 +609,393 @@ def single_videos(main_video, main_rub):
     video_obj.release()
     cv2.destroyAllWindows()
     print(f"Video processing complete. All segments saved to {output_dir}")
+
+
+def create_csv_from_json(source_folder, destination_folder, subjects, equivalent_motions, id_to_motion):
+    """
+    Function to create CSV files from JSON motion files
+    
+    Args:
+        source_folder: Directory containing subject folders with JSON files
+        destination_folder: Directory to save individual CSV files
+        subjects: List of subject IDs to process
+        equivalent_motions: Dictionary mapping motion IDs to canonical IDs
+        id_to_motion: Dictionary mapping motion IDs to motion names
+    
+    Returns:
+        dict: Dictionary mapping subject IDs to their common motions
+        list: List of motion IDs common to all subjects
+    """
+    os.makedirs(destination_folder, exist_ok=True)
+    
+    # Find subjects and their available motions
+    subject_motions = {}
+
+    for subject_id in subjects:
+        subject_folder = os.path.join(source_folder, f"pred_Subject_{subject_id}")
+        if os.path.exists(subject_folder):
+            json_files = glob.glob(os.path.join(subject_folder, "*.json"))
+            motion_ids = set()  # Using a set to automatically handle duplicates
+            
+            for json_file in json_files:
+                filename = os.path.basename(json_file)
+                # Extract motion ID from filename
+                match = re.search(f"subject_{subject_id}_motion_(\\d+)", filename)
+                if match:
+                    motion_id = match.group(1)
+                    # Convert to canonical ID if it's an equivalent motion
+                    canonical_id = equivalent_motions.get(motion_id, motion_id)
+                    motion_ids.add(canonical_id)
+            
+            subject_motions[subject_id] = list(motion_ids)
+
+    # Find common motions across all subjects
+    all_motion_sets = [set(motions) for motions in subject_motions.values()]
+    if all_motion_sets:
+        common_motions = set.intersection(*all_motion_sets)
+        common_motions = sorted([int(m) for m in common_motions])
+        print(f"Common motions across all subjects: {common_motions}")
+        print(f"Motion names: {[id_to_motion.get(str(m), f'Unknown-{m}') for m in common_motions]}")
+    else:
+        common_motions = []
+        print("No subjects with motions found.")
+
+    # Process each subject
+    for subject_id in subjects:
+        subject_folder = os.path.join(source_folder, f"pred_Subject_{subject_id}")
+        
+        if not os.path.exists(subject_folder):
+            print(f"Subject folder not found: {subject_folder}")
+            continue
+        
+        # Process each motion for this subject
+        for canonical_motion_id in common_motions:
+            canonical_motion_id_str = str(canonical_motion_id)
+            
+            # Find all possible equivalent motion IDs for this canonical ID
+            possible_motion_ids = [motion_id for motion_id, canon_id in equivalent_motions.items() 
+                                    if canon_id == canonical_motion_id_str]
+            # Also include the canonical ID itself
+            if canonical_motion_id_str not in possible_motion_ids:
+                possible_motion_ids.append(canonical_motion_id_str)
+            
+            # Try all possible motion IDs
+            found = False
+            for motion_id in possible_motion_ids:
+                # Pad with leading zeros (both 2-digit and 1-digit formats for compatibility)
+                padded_motion_id_2 = motion_id.zfill(2)
+                padded_motion_id_1 = motion_id.zfill(1)
+                
+                # Try both padding formats
+                for padded_id in [padded_motion_id_2, padded_motion_id_1]:
+                    motion_pattern = f"subject_{subject_id}_motion_{padded_id}.json"
+                    motion_files = glob.glob(os.path.join(subject_folder, motion_pattern))
+                    
+                    if motion_files:
+                        json_file_path = motion_files[0]
+                        filename = os.path.basename(json_file_path)
+                        filename_without_ext = os.path.splitext(filename)[0]
+                        
+                        # Create CSV for this motion
+                        output_path = os.path.join(destination_folder, f"{filename_without_ext}.csv")
+                        
+                        # Process the JSON file and create CSV
+                        with open(json_file_path, 'r') as f:
+                            predictions = json.load(f)
+                        
+                        # Create empty lists to store the data
+                        frame_ids = []
+                        joint_names = []
+                        x_3d = []
+                        y_3d = []
+                        z_3d = []
+                        confidence = []
+                        
+                        # Process each frame
+                        for frame_data in predictions:
+                            frame_id = frame_data["frame_id"]
+                            
+                            # Check if there are instances in this frame
+                            if 'instances' in frame_data and len(frame_data["instances"]) > 0:
+                                # Get the first person (or you can loop through all if needed)
+                                person_data = frame_data["instances"][0]
+                                
+                                # Extract 3D keypoints
+                                keypoints_3d = person_data['keypoints']
+                                scores = person_data['keypoint_scores']
+                                
+                                # Process each keypoint
+                                for idx, (point, score) in enumerate(zip(keypoints_3d, scores)):
+                                    if idx < len(H36M_KEYPOINT_NAMES):
+                                        joint_name = H36M_KEYPOINT_NAMES[idx]
+                                        
+                                        frame_ids.append(frame_id)
+                                        joint_names.append(joint_name)
+                                        x_3d.append(point[0])
+                                        y_3d.append(point[1])
+                                        z_3d.append(point[2])
+                                        confidence.append(score)
+                        
+                        # Create a DataFrame with the 3D keypoint data
+                        df_3d = pd.DataFrame({
+                            'frame_id': frame_ids,
+                            'joint_name': joint_names,
+                            'x_3d': x_3d,
+                            'y_3d': y_3d,
+                            'z_3d': z_3d,
+                            'confidence': confidence,
+                            'motion_id': canonical_motion_id,
+                            'original_motion_id': motion_id,
+                            'motion_name': id_to_motion.get(canonical_motion_id_str, f'Unknown-{canonical_motion_id}'),
+                            'subject_id': subject_id
+                        })
+                        
+                        # Save the DataFrame to CSV
+                        df_3d.to_csv(output_path, index=False)
+                        
+                        found = True
+                        break
+                
+                if found:
+                    break
+    
+    return subject_motions, common_motions
+
+def merge_subject_csv_files(destination_folder, merged_folder, subjects, common_motions):
+    """
+    Function to merge CSV files for each subject
+    
+    Args:
+        destination_folder: Directory containing individual CSV files
+        merged_folder: Directory to save merged CSV files
+        subjects: List of subject IDs to process
+        common_motions: List of motion IDs common to all subjects
+    """
+    os.makedirs(merged_folder, exist_ok=True)
+    
+    for subject_id in subjects:
+        # Dictionary to store dataframes for common motions
+        subject_dfs = {}
+        
+        # Process each motion for this subject
+        for canonical_motion_id in common_motions:
+            # Try different padding formats for motion IDs in filenames
+            found = False
+            
+            # Try with 2-digit padding (00, 01, etc.)
+            padded_id = str(canonical_motion_id).zfill(2)
+            csv_pattern = f"subject_{subject_id}_motion_{padded_id}.csv"
+            csv_files = glob.glob(os.path.join(destination_folder, csv_pattern))
+            
+            if not csv_files:
+                # Try with 1-digit padding (0, 1, etc.)
+                padded_id = str(canonical_motion_id).zfill(1)
+                csv_pattern = f"subject_{subject_id}_motion_{padded_id}.csv"
+                csv_files = glob.glob(os.path.join(destination_folder, csv_pattern))
+            
+            if csv_files:
+                # Load CSV file
+                csv_file_path = csv_files[0]
+                df = pd.read_csv(csv_file_path)
+                subject_dfs[canonical_motion_id] = df
+        
+        # Merge all dataframes for this subject
+        if subject_dfs:
+            # Sort by motion_id to ensure consistent order
+            sorted_dfs = [subject_dfs[motion_id] for motion_id in sorted(subject_dfs.keys()) if motion_id in subject_dfs]
+            
+            if sorted_dfs:  # Check if we have any dataframes to merge
+                merged_df = pd.concat(sorted_dfs, ignore_index=True)
+                
+                # Save merged dataframe
+                merged_output_path = os.path.join(merged_folder, f"subject_{subject_id}_all_motions.csv")
+                merged_df.to_csv(merged_output_path, index=False)
+                print(f"Created merged file for subject {subject_id} with {len(sorted_dfs)} motions")
+            else:
+                print(f"No common motions found for subject {subject_id}")
+
+def visualize_joint_trajectories(merged_folder, output_folder, common_motions, subjects, id_to_motion):
+    """
+    Visualize joint trajectories for a specific motion across all subjects.
+    
+    Args:
+        merged_folder: Directory containing merged CSV files
+        output_folder: Directory to save visualization plots
+        common_motions: List of common motion IDs
+        subjects: List of subject IDs
+        id_to_motion: Dictionary mapping motion IDs to motion names
+    """
+    os.makedirs(output_folder, exist_ok=True)
+    
+    # Iterate through each common motion
+    for motion_id in common_motions:
+        motion_name = id_to_motion.get(str(motion_id), f'Unknown-{motion_id}')
+        print(f"Visualizing motion {motion_id}: {motion_name}")
+        
+        # Create a folder for this motion
+        motion_folder = os.path.join(output_folder, f"motion_{motion_id}_{motion_name}")
+        os.makedirs(motion_folder, exist_ok=True)
+        
+        # Dictionary to store data for each subject
+        subject_data = {}
+        
+        # Load data for all subjects for this motion
+        for subject_id in subjects:
+            subject_file = os.path.join(merged_folder, f"subject_{subject_id}_all_motions.csv")
+            if os.path.exists(subject_file):
+                df = pd.read_csv(subject_file)
+                # Extract only data for the current motion
+                motion_df = df[df['motion_id'] == motion_id]
+                if not motion_df.empty:
+                    subject_data[subject_id] = motion_df
+        
+        if not subject_data:
+            print(f"No data found for motion {motion_id}")
+            continue
+        
+        # Get unique joints from the data
+        sample_df = next(iter(subject_data.values()))
+        all_joints = sample_df['joint_name'].unique()
+        
+        # Visualize trajectory for each joint
+        for joint in all_joints:
+            print(f"  Visualizing joint: {joint}")
+            
+            # Figure for 3D visualization
+            # fig_3d = plt.figure(figsize=(12, 10))
+            # ax_3d = fig_3d.add_subplot(111, projection='3d')
+            # ax_3d.set_title(f'3D Trajectory of {joint} - Motion: {motion_name} (ID: {motion_id})')
+            # ax_3d.set_xlabel('X')
+            # ax_3d.set_ylabel('Y')
+            # ax_3d.set_zlabel('Z')
+            
+            # 2D visualization of X, Y, Z coordinates over time
+            fig_2d = plt.figure(figsize=(16, 10))
+            gs = GridSpec(3, 1, figure=fig_2d)
+            ax_x = fig_2d.add_subplot(gs[0, 0])
+            ax_y = fig_2d.add_subplot(gs[1, 0])
+            ax_z = fig_2d.add_subplot(gs[2, 0])
+            
+            ax_x.set_title(f'X Coordinate of {joint} Over Time - Motion: {motion_name} (ID: {motion_id})')
+            ax_y.set_title(f'Y Coordinate of {joint} Over Time')
+            ax_z.set_title(f'Z Coordinate of {joint} Over Time')
+            
+            ax_x.set_ylabel('X Position')
+            ax_y.set_ylabel('Y Position')
+            ax_z.set_ylabel('Z Position')
+            ax_z.set_xlabel('Frame Number')
+            
+            # Color map for different subjects
+            cmap = plt.cm.get_cmap('tab20', len(subject_data))
+            
+            # Plot data for each subject
+            for i, (subject_id, df) in enumerate(subject_data.items()):
+                # Get data for this joint
+                joint_df = df[df['joint_name'] == joint].sort_values('frame_id')
+                
+                if joint_df.empty:
+                    continue
+                
+                color = cmap(i)
+                label = f'Subject {subject_id}'
+                
+                # Extract coordinates
+                x = joint_df['x_3d'].values
+                y = joint_df['y_3d'].values
+                z = joint_df['z_3d'].values
+                frames = joint_df['frame_id'].values
+                
+                # 3D trajectory plot
+                # ax_3d.plot(x, y, z, marker='o', markersize=2, linestyle='-', linewidth=1, color=color, label=label)
+                
+                # 2D plots over time
+                ax_x.plot(frames, x, marker='o', markersize=2, linestyle='-', linewidth=1, color=color, label=label)
+                ax_y.plot(frames, y, marker='o', markersize=2, linestyle='-', linewidth=1, color=color)
+                ax_z.plot(frames, z, marker='o', markersize=2, linestyle='-', linewidth=1, color=color)
+            
+            # Add legends
+            # ax_3d.legend()
+            ax_x.legend()
+            
+            # Adjust layout
+            # fig_3d.tight_layout()
+            fig_2d.tight_layout()
+            
+            # Save plots
+            # fig_3d.savefig(os.path.join(motion_folder, f"{joint}_3D_trajectory.png"), dpi=300)
+            fig_2d.savefig(os.path.join(motion_folder, f"{joint}_coordinates_over_time.png"), dpi=300)
+            
+            # Close figures to save memory
+            # plt.close(fig_3d)
+            plt.close(fig_2d)
+            
+        # Create a combined visualization for all joints in this motion
+        visualize_motion_overview(subject_data, motion_id, motion_name, motion_folder, all_joints)
+
+def visualize_motion_overview(subject_data, motion_id, motion_name, output_folder, all_joints):
+    """
+    Create an overview visualization showing all joints for a single subject
+    
+    Args:
+        subject_data: Dictionary of dataframes by subject ID
+        motion_id: Motion ID being visualized
+        motion_name: Name of the motion
+        output_folder: Folder to save the visualization
+        all_joints: List of all joint names
+    """
+    # Choose a sample subject for overview visualization
+    sample_subject_id = next(iter(subject_data.keys()))
+    sample_df = subject_data[sample_subject_id]
+    
+    # Create figures for overview
+    fig = plt.figure(figsize=(18, 12))
+    gs = GridSpec(3, 1, height_ratios=[1, 1, 1], figure=fig)
+    
+    # 3 subplots for X, Y, Z coordinates
+    ax_x = fig.add_subplot(gs[0, 0])
+    ax_y = fig.add_subplot(gs[1, 0])
+    ax_z = fig.add_subplot(gs[2, 0])
+    
+    ax_x.set_title(f'X Coordinates of All Joints - Motion: {motion_name} (ID: {motion_id}) - Subject {sample_subject_id}')
+    ax_y.set_title('Y Coordinates of All Joints')
+    ax_z.set_title('Z Coordinates of All Joints')
+    
+    ax_x.set_ylabel('X Position')
+    ax_y.set_ylabel('Y Position')
+    ax_z.set_ylabel('Z Position')
+    ax_z.set_xlabel('Frame Number')
+    
+    # Color map for different joints
+    cmap = plt.cm.get_cmap('tab20', len(all_joints))
+    
+    # Plot each joint
+    for i, joint in enumerate(all_joints):
+        # Get data for this joint
+        joint_df = sample_df[sample_df['joint_name'] == joint].sort_values('frame_id')
+        
+        if joint_df.empty:
+            continue
+        
+        color = cmap(i)
+        
+        # Extract coordinates
+        x = joint_df['x_3d'].values
+        y = joint_df['y_3d'].values
+        z = joint_df['z_3d'].values
+        frames = joint_df['frame_id'].values
+        
+        # Plot coordinates over time
+        ax_x.plot(frames, x, marker='', linestyle='-', linewidth=1, color=color, label=joint)
+        ax_y.plot(frames, y, marker='', linestyle='-', linewidth=1, color=color)
+        ax_z.plot(frames, z, marker='', linestyle='-', linewidth=1, color=color)
+    
+    # Add legend
+    ax_x.legend(loc='upper right', bbox_to_anchor=(1.1, 1))
+    
+    # Adjust layout
+    fig.tight_layout()
+    
+    # Save plot
+    fig.savefig(os.path.join(output_folder, f"all_joints_overview_subject_{sample_subject_id}.png"), dpi=300)
+    plt.close(fig)
+
