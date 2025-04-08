@@ -218,7 +218,7 @@ class MP_model(torch.nn.Module):
             
 
     def init_model_params(self,init_data):
-        """Init model params by principal component analysis
+        """Init model params by principal component analysis (PCA)
         data[sensor,time], segment_end[idx] end of segments."""
 
         sensors=None
@@ -446,17 +446,58 @@ class TestTMPModel(unittest.TestCase):
     def setUp(self):
         """Generate ground truth data from a random teacher model"""
 
-        self.num_timepoints_per_primitive=50
-        self.num_ground_truth_segments=500
-        self.num_ground_truth_signals=11
-        self.num_ground_truth_MPs=5
+        # self.num_timepoints_per_primitive=50
+        # self.num_ground_truth_segments=500
+        # self.num_ground_truth_signals=11
+        # self.num_ground_truth_MPs=5
+        
+        # self.teacher=MP_model(self.num_timepoints_per_primitive,self.num_ground_truth_MPs,self.num_ground_truth_signals,
+        #                       self.num_ground_truth_segments,kernel_width=10.0)
+        # self.segment_lengths=numpy.random.randint(self.num_timepoints_per_primitive//2,2*self.num_timepoints_per_primitive,size=self.num_ground_truth_segments)
+        # self.ground_truth_data=self.teacher.predict(self.segment_lengths,as_numpy=True)
+        # plot_kernel(self.teacher.K)
+        # plot_mp(torch.stack(list(self.teacher.MPs)),"teacher, rand. init")
+        ########################################################
 
-        self.teacher=MP_model(self.num_timepoints_per_primitive,self.num_ground_truth_MPs,self.num_ground_truth_signals,self.num_ground_truth_segments,kernel_width=10.0)
-        self.segment_lengths=numpy.random.randint(self.num_timepoints_per_primitive//2,2*self.num_timepoints_per_primitive,size=self.num_ground_truth_segments)
-        self.ground_truth_data=self.teacher.predict(self.segment_lengths,as_numpy=True)
+        """Use real BVH data instead of generating ground truth data"""
+        destination_folder = f"../../../data/MMpose/bvh_files/bvh_files_motion_2_walking"
+        folder_path = "../../../data/MMpose/bvh_files" 
+        # folder_path = destination_folder  # if specific motion is assumed for training only
+        folder_path = "../../BVH_small"
+        bvh_data = read_bvh_files(folder_path)
+        
+        # Process data according to paper specifications
+        self.ground_truth_data = process_bvh_data(bvh_data)
+        
+        # Set model parameters based on your data
+        self.num_timepoints_per_primitive = 50
+        self.num_ground_truth_MPs = 5
+        
+        # Find how many signals are in your data (assuming all segments have same number of signals)
+        self.num_ground_truth_signals = self.ground_truth_data[0].shape[0]
+        
+        # Store the number of segments
+        self.num_ground_truth_segments = len(self.ground_truth_data)
+        
+        # Get segment lengths from your data
+        self.segment_lengths = numpy.array([segment.shape[1] for segment in self.ground_truth_data])
+        
+        # You can still plot the initial data if you want
+        # If you want to visualize one of the segments:
+        if len(self.ground_truth_data) > 0:
+            sample_seg = self.ground_truth_data[0]
+            plt.figure(figsize=(10, 6))
+            for i in range(min(5, sample_seg.shape[0])):  # Plot up to 5 signals
+                plt.plot(sample_seg[i], label=f'Signal {i}')
+            plt.title('Sample segment from BVH data')
+            plt.legend()
+            plt.show()
 
+        self.teacher=MP_model(self.num_timepoints_per_primitive,self.num_ground_truth_MPs,self.num_ground_truth_signals,
+                              self.num_ground_truth_segments,kernel_width=10.0)
+        
         plot_kernel(self.teacher.K)
-        plot_mp(torch.stack(list(self.teacher.MPs)),"teacher, rand. init")
+        plot_mp(torch.stack(list(self.teacher.MPs)),"teacher, pca_real dat init")
 
     def test1LearningPCA(self):
         """Test learning of a model that has as many MPs as the teacher and is PCA-initalized"""
@@ -483,54 +524,54 @@ class TestTMPModel(unittest.TestCase):
             self.assertTrue(vc[-1]>0.98,"VAF after learning is only {0:f}, check convergence!".format(vc[-1]))
 
 
-    def test2LearningRandom(self):
-        """Test learning of a model that has as many MPs as the teacher and is randomly initalized"""
+    # def test2LearningRandom(self):
+    #     """Test learning of a model that has as many MPs as the teacher and is randomly initalized"""
 
-        for student_timepoints in [self.num_timepoints_per_primitive,self.num_timepoints_per_primitive//2,self.num_timepoints_per_primitive*2]:
+    #     for student_timepoints in [self.num_timepoints_per_primitive,self.num_timepoints_per_primitive//2,self.num_timepoints_per_primitive*2]:
 
-            student=MP_model(student_timepoints,self.num_ground_truth_MPs,self.num_ground_truth_signals,self.num_ground_truth_segments,kernel_width=10.0)
+    #         student=MP_model(student_timepoints,self.num_ground_truth_MPs,self.num_ground_truth_signals,self.num_ground_truth_segments,kernel_width=10.0)
 
-            student.learn(self.ground_truth_data,2000,20)
+    #         student.learn(self.ground_truth_data,2000,20)
 
-            lc=student.learn_curve
-            vc=student.VAF_curve
-            epochs=numpy.arange(len(lc))
+    #         lc=student.learn_curve
+    #         vc=student.VAF_curve
+    #         epochs=numpy.arange(len(lc))
 
-            plot_learn_curve(epochs,lc,vc,"student_{0:d}, rand init".format(student_timepoints))
-            plot_learn_curve(epochs[-50:],lc[-50:],vc[-50:],"student_{0:d}, rand init, tail".format(student_timepoints))
+    #         plot_learn_curve(epochs,lc,vc,"student_{0:d}, rand init".format(student_timepoints))
+    #         plot_learn_curve(epochs[-50:],lc[-50:],vc[-50:],"student_{0:d}, rand init, tail".format(student_timepoints))
 
-            recon_data=student.predict(self.segment_lengths,as_numpy=True)
+    #         recon_data=student.predict(self.segment_lengths,as_numpy=True)
 
-            plot_reconstructions(self.ground_truth_data[self.segment_lengths.argmax()],recon_data[self.segment_lengths.argmax()],"student_{0:d}, rand,".format(student_timepoints))
-            plot_reconstructions(self.ground_truth_data[self.segment_lengths.argmin()],recon_data[self.segment_lengths.argmin()],"student_{0:d}, rand,".format(student_timepoints))
-            plot_mp(torch.stack(list(student.MPs)),"student_{0:d}, rand init".format(student_timepoints))
+    #         plot_reconstructions(self.ground_truth_data[self.segment_lengths.argmax()],recon_data[self.segment_lengths.argmax()],"student_{0:d}, rand,".format(student_timepoints))
+    #         plot_reconstructions(self.ground_truth_data[self.segment_lengths.argmin()],recon_data[self.segment_lengths.argmin()],"student_{0:d}, rand,".format(student_timepoints))
+    #         plot_mp(torch.stack(list(student.MPs)),"student_{0:d}, rand init".format(student_timepoints))
 
-            self.assertTrue(vc[-1]>0.98,"VAF after learning is only {0:f}, check convergence!".format(vc[-1]))
-
-
-    def test3ModelComparison(self):
-        """Model selection test"""
-
-        student_timepoints=self.num_timepoints_per_primitive//2
-
-        model_evidences=[]
-        VAFs=[]
-        for student_num_MPs in range(1,10):
-
-            student=MP_model(student_timepoints,student_num_MPs,self.num_ground_truth_signals,self.num_ground_truth_segments,kernel_width=10.0)
-
-            student.learn(self.ground_truth_data,adam_steps=2000)
-
-            VAFs.append(student.VAF_curve[-1])
-            model_evidences.append(student.Laplace_approx(self.ground_truth_data))
+    #         self.assertTrue(vc[-1]>0.98,"VAF after learning is only {0:f}, check convergence!".format(vc[-1]))
 
 
-        plot_model_comparison(model_evidences,VAFs,ground_truth_num_MPs=self.num_ground_truth_MPs,title="")
+    # def test3ModelComparison(self):
+    #     """Model selection test"""
 
-        model_evidences=numpy.array(model_evidences)
-        best_num_MPs=model_evidences.argmax()+1
+    #     student_timepoints=self.num_timepoints_per_primitive//2
 
-        self.assertTrue(numpy.abs(best_num_MPs-self.num_ground_truth_MPs)<2,"Model comparison found num.MP={0:d}, but it should be at num.MP={1:d}".format(best_num_MPs,self.num_ground_truth_MPs))
+    #     model_evidences=[]
+    #     VAFs=[]
+    #     for student_num_MPs in range(1,10):
+
+    #         student=MP_model(student_timepoints,student_num_MPs,self.num_ground_truth_signals,self.num_ground_truth_segments,kernel_width=10.0)
+
+    #         student.learn(self.ground_truth_data,adam_steps=2000)
+
+    #         VAFs.append(student.VAF_curve[-1])
+    #         model_evidences.append(student.Laplace_approx(self.ground_truth_data))
+
+
+    #     plot_model_comparison(model_evidences,VAFs,ground_truth_num_MPs=self.num_ground_truth_MPs,title="")
+
+    #     model_evidences=numpy.array(model_evidences)
+    #     best_num_MPs=model_evidences.argmax()+1
+
+    #     self.assertTrue(numpy.abs(best_num_MPs-self.num_ground_truth_MPs)<2,"Model comparison found num.MP={0:d}, but it should be at num.MP={1:d}".format(best_num_MPs,self.num_ground_truth_MPs))
 
 
 

@@ -195,10 +195,6 @@ def process_bvh_data(bvh_data, num_points=50):
     if not processed_segments:
         raise ValueError("No segments could be processed")
     
-    # Ensure all segments have same number of sensors
-    # min_sensors = min(seg.shape[0] for seg in processed_segments)
-    # normalized_segments = [seg[:min_sensors, :] for seg in processed_segments]
-
     return processed_segments
-    # return normalized_segments
+    
 
