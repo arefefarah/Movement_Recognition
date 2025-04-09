@@ -816,7 +816,7 @@ def merge_subject_csv_files(destination_folder, merged_folder, subjects, common_
 
 def visualize_joint_trajectories(merged_folder, output_folder, common_motions, subjects, id_to_motion):
     """
-    Visualize joint trajectories for a specific motion across all subjects.
+    Visualize 3 sample joint trajectories for a specific motion across all subjects.
     
     Args:
         merged_folder: Directory containing merged CSV files
@@ -858,7 +858,8 @@ def visualize_joint_trajectories(merged_folder, output_folder, common_motions, s
         all_joints = sample_df['joint_name'].unique()
         
         # Visualize trajectory for each joint
-        for joint in all_joints:
+        sample_joints = all_joints[0:3]
+        for joint in sample_joints:
             print(f"  Visualizing joint: {joint}")
             
             # Figure for 3D visualization
