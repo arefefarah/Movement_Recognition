@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import json
 from matplotlib.gridspec import GridSpec
+from matplotlib.patches import Patch
 
 
 
@@ -1000,3 +1001,36 @@ def visualize_motion_overview(subject_data, motion_id, motion_name, output_folde
     fig.savefig(os.path.join(output_folder, f"all_joints_overview_subject_{sample_subject_id}.png"), dpi=300)
     plt.close(fig)
 
+
+
+def convert_motion_id_to_bvh(motion_id, id_to_motion=None,
+                             source_folder = None,destination_folder = None, csv_pattern =None):
+    if source_folder == None:
+        source_folder = "../../../data/MMpose/df_files_3d"
+    
+    # Create a specific destination folder for this motion
+    motion_name = id_to_motion.get(str(motion_id), f"motion_{motion_id}") if id_to_motion else f"motion_{motion_id}"
+    if destination_folder == None:
+        destination_folder = f"../../../data/MMpose/bvh_files/bvh_files_motion_{motion_id}_{motion_name}"
+    
+    os.makedirs(destination_folder, exist_ok=True)
+    
+    padded_motion_id = str(motion_id).zfill(2)
+    
+    if csv_pattern == None:
+        csv_pattern = f"subject_*_motion_{padded_motion_id}.csv"
+    csv_files = glob.glob(os.path.join(source_folder, csv_pattern))
+    
+    print(f"Processing motion ID: {motion_id} ({motion_name})")
+    print(f"Found {len(csv_files)} CSV files for this motion")
+    
+    for file_path in csv_files:
+        
+        df_3d = pd.read_csv(file_path)
+        filename = os.path.basename(file_path)
+        filename_without_ext = os.path.splitext(filename)[0]
+        output_bvh_path = os.path.join(destination_folder, f"{filename_without_ext}.bvh")
+        
+        create_h36m_bvh(df_3d, output_bvh_path, fps=120)
+    
+    print(f"Conversion complete for motion {motion_id} ({motion_name})")

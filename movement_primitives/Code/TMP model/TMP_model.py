@@ -400,7 +400,7 @@ class MP_model(torch.nn.Module):
 
         def closure():
             optimizer.zero_grad()
-            neg_log_p=self(data) # get loss
+            neg_log_p=self(data) # get loss  # This calls forward()
             neg_log_p.backward() # compute gradient of the loss with respect to model parameters
             return neg_log_p
 

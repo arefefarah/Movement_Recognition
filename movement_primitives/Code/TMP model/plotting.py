@@ -13,6 +13,7 @@ import numpy as np
 from scipy import signal
 import unittest
 import os
+from matplotlib.patches import Patch
 from bvh import Bvh
 
 
@@ -197,5 +198,205 @@ def process_bvh_data(bvh_data, num_points=50):
         raise ValueError("No segments could be processed")
     
     return processed_segments
+
+
+def plot_weights_for_signal(model, signal_idx, title=None):
+    """
+    Plot weights of a specific signal for all MPs across all segments.
+    
+    Parameters:
+    -----------
+    model : MP_model
+        The trained temporal movement primitive model
+    signal_idx : int
+        Index of the signal to plot (0-53)
+    title : str, optional
+        Title for the plot
+    """
+    # Get number of segments and MPs
+    num_segments = len(model.weights)
+    num_MPs = model.num_MPs
+    
+    # Create figure
+    plt.figure(figsize=(8, 4))
+    
+    # For each MP, collect weights from all segments for the chosen signal
+    for mp_idx in range(num_MPs):
+        # Extract weights for this MP and signal across all segments
+        weights = [model.weights[seg_idx][signal_idx, mp_idx].item() for seg_idx in range(num_segments)]
+        
+        # Create x positions for this MP (add small jitter to separate points)
+        x_positions = np.random.normal(mp_idx + 1, 0.05, len(weights))
+        
+        # Plot points for this MP
+        plt.scatter(x_positions, weights, label=f'MP {mp_idx+1}', alpha=0.7)
+    
+    # Add a horizontal line at y=0 for reference
+    plt.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
+    
+    # Set plot labels and title
+    plt.xlabel('Movement Primitive (MP)')
+    plt.ylabel(f'Weight for Signal {signal_idx+1}')
+    if title:
+        plt.title(title)
+    else:
+        plt.title(f'Weights for Signal(joint) {signal_idx+1} across all segments')
+    
+    # Set x-ticks to MP numbers
+    plt.xticks(range(1, num_MPs + 1))
+    
+    # Add grid for better readability
+    plt.grid(True, alpha=0.3)
+    
+    # Show the plot
+    plt.tight_layout()
+    plt.show()
+
+
+
+def identify_signals(num_signals=54):
+    """
+    Create a mapping between signal indices and joint names with rotation/position axes
+    based on Human3.6M keypoint structure.
+    
+    Parameters:
+    -----------
+    num_signals : int
+        Total number of signals (default=54)
+    
+    Returns:
+    --------
+    signal_names : list
+        List of signal names in format "JointName_Axis"
+    signal_mapping : dict
+        Dictionary mapping signal indices to signal names
+    """
+    # Human3.6M keypoint names
+    H36M_KEYPOINT_NAMES = [
+        'Hip', 'RHip', 'RKnee', 'RAnkle', 'LHip', 'LKnee', 'LAnkle',
+        'Spine', 'Thorax', 'Neck', 'Head',
+        'LShoulder', 'LElbow', 'LWrist', 'RShoulder', 'RElbow', 'RWrist'
+    ]
+    
+    # Create signal names
+    signal_names = []
+    signal_mapping = {}
+    
+    signal_idx = 0
+    
+    # Hip has 6 signals: X/Y/Z position and Z/X/Y rotation
+    hip_signals = ['Xposition', 'Yposition', 'Zposition', 'Zrotation', 'Xrotation', 'Yrotation']
+    for signal in hip_signals:
+        signal_name = f"Hip_{signal}"
+        signal_names.append(signal_name)
+        signal_mapping[signal_idx] = signal_name
+        signal_idx += 1
+    
+    # All other joints have 3 rotation signals: Z/X/Y rotation
+    rotation_signals = ['Zrotation', 'Xrotation', 'Yrotation']
+    for joint in H36M_KEYPOINT_NAMES[1:]:  # Skip Hip as it's already processed
+        for signal in rotation_signals:
+            signal_name = f"{joint}_{signal}"
+            signal_names.append(signal_name)
+            signal_mapping[signal_idx] = signal_name
+            signal_idx += 1
+    
+    # Verify we have the expected number of signals
+    expected_signals = 6 + (len(H36M_KEYPOINT_NAMES) - 1) * 3  # 6 for Hip + 3 for each other joint
+    
+    if expected_signals != num_signals:
+        print(f"Warning: Expected {expected_signals} signals based on H36M structure.")
+        print(f"Actual number of signals: {num_signals}")
+        
+        # Fill any remaining indices if needed
+        for i in range(signal_idx, num_signals):
+            signal_name = f"Unknown_{i}"
+            signal_names.append(signal_name)
+            signal_mapping[i] = signal_name
+    
+    return signal_names, signal_mapping
+
+def plot_weights_by_joint(model, motion_label):
+    """
+    Plot weight distribution for all signals grouped by joint, with one subplot per MP.
+    
+    Parameters:
+    -----------
+    model : MP_model
+        The trained temporal movement primitive model
+    title : str, optional
+        Title for the plot
+    """
+    # Get dimensions
+    num_segments = len(model.weights)
+    num_MPs = model.num_MPs
+    num_signals = model.weights[0].shape[0]
+    
+    # Get signal names and mapping
+    signal_names, signal_mapping = identify_signals(num_signals)
+   
+    # Create figure with subplots
+    fig, axes = plt.subplots(num_MPs, 1, figsize=(18, 4*num_MPs), sharex=True)
+    if num_MPs == 1:
+        axes = [axes]  # Make it iterable for a single subplot
+    
+    # Define colors for different signal types
+    signal_colors = {
+        'Xposition': 'tab:red',
+        'Yposition': 'tab:green',
+        'Zposition': 'tab:blue',
+        'Zrotation': 'tab:purple',
+        'Xrotation': 'tab:orange',
+        'Yrotation': 'tab:brown'
+    }
+    
+    # For each MP
+    for mp_idx in range(num_MPs):
+        ax = axes[mp_idx]
+        
+        # For each signal, collect weights from all segments
+        for signal_idx in range(num_signals):
+            signal_name = signal_mapping[signal_idx]
+            signal_type = signal_name.split('_')[1]
+            
+            # Extract weights for this MP and signal across all segments
+            weights = [model.weights[seg_idx][signal_idx, mp_idx].item() for seg_idx in range(num_segments)]
+            
+            # Create x positions for this signal
+            x_positions = np.random.normal(signal_idx + 1, 0.1, len(weights))
+            
+            # Plot points for this signal
+            ax.scatter(x_positions, weights, alpha=0.6, s=30, color=signal_colors.get(signal_type, 'gray'))
+        
+        # Add a horizontal line at y=0 for reference
+        ax.axhline(y=0, color='black', linestyle='--', alpha=0.5)
+        
+        # Set plot labels
+        ax.set_ylabel(f'Weights for MP {mp_idx+1}')
+        ax.set_title(f'Movement Primitive {mp_idx+1} Weight Distribution')
+        
+        ax.grid(True, alpha=0.3)
+    
+    plt.xlabel('Joint Signal')
+    
+    # Create custom x-tick labels
+    tick_positions = list(range(1, num_signals + 1))
+    tick_labels = [f"{signal_idx+1}: {name}" for signal_idx, name in signal_mapping.items()]
+    
+    # Use every few ticks to avoid overcrowding
+    step = max(1, num_signals // 20)
+    plt.xticks(tick_positions[::step], tick_labels[::step], rotation=45, ha='right', fontsize=8)
+    
+    # Add a legend for signal types
+    legend_elements = [Patch(facecolor=color, label=signal_type) 
+                      for signal_type, color in signal_colors.items()]
+    fig.legend(handles=legend_elements, loc='upper right', title='Signal Types')
+    
+    fig.suptitle(f'Weight Distribution by Joint in {motion_label}', fontsize=16)
+    
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.9, bottom=0.2)  # Adjust to make room for the suptitle and rotated labels
+    plt.savefig(f'weights_{motion_label}.png')
+    plt.show()
     
 
