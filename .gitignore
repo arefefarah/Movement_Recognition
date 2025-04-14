@@ -6,7 +6,7 @@ movement_primitives/C3D.zip
 movement_primitives/BVH.zip
 movement_primitives/BVH_small/**
 movement_primitives/C3D_small/**
-# scripts and data for server/
+scripts and data for server/
 # # Ignore everything
 # *
 
