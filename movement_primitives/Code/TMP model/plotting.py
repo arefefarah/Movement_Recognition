@@ -75,24 +75,25 @@ def plot_learn_curve(epochs,lc,vc,title=""):
     plt.show()
     
     
-    
-def plot_reconstructions(orig,recon,title=""):
-    
+
+def plot_reconstructions(orig, recon, title=""):
     plt.clf()
+    
     for i in range(6):
-        plt.subplot(2,3,i+1)
-        if i==0:
-            plt.plot(orig[i],linewidth=2,linestyle="dotted",label="data")
-            plt.plot(recon[i],linewidth=1,label="model")
+        plt.subplot(2, 3, i + 1) 
+        if i == 0:
+            plt.plot(orig[i], linewidth=2, linestyle="dotted", label="data")
+            plt.plot(recon[i], linewidth=1, label="model")
             plt.legend()
         else:
-            plt.plot(orig[i],linewidth=2,linestyle="dotted")
-            plt.plot(recon[i],linewidth=1)
-            
-    
-    plt.suptitle("Reconstructions: "+title)
-    plt.savefig("recon_"+title+".png")
+            plt.plot(orig[i], linewidth=2, linestyle="dotted")
+            plt.plot(recon[i], linewidth=1)
+        
+    plt.tight_layout() 
+    plt.suptitle("Reconstructions: " + title, y=1.02) 
+    plt.savefig("recon_" + title + ".png", bbox_inches='tight') 
     plt.show()
+
     
     
 def plot_kernel(K):

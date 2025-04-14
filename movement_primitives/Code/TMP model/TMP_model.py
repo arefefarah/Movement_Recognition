@@ -567,6 +567,7 @@ class TestTMPModel(unittest.TestCase):
             student.learn(self.ground_truth_data,adam_steps=2000)
 
             VAFs.append(student.VAF_curve[-1])
+            # Compute laplace approximation to log(P(D|model)) --> posterior
             model_evidences.append(student.Laplace_approx(self.ground_truth_data))
 
 
