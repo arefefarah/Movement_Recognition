@@ -80,15 +80,15 @@ def plot_learn_curve(epochs,lc,vc,title=""):
 def plot_reconstructions(orig, recon, title=""):
     plt.clf()
     
-    for i in range(6):
+    for i in range(6):    # I add 6 to i to make sure it plots Rhip and Rknee
         plt.subplot(2, 3, i + 1) 
         if i == 0:
-            plt.plot(orig[i], linewidth=2, linestyle="dotted", label="data")
-            plt.plot(recon[i], linewidth=1, label="model")
+            plt.plot(orig[i+6], linewidth=2, linestyle="dotted", label="data")
+            plt.plot(recon[i+6], linewidth=1, label="model")
             plt.legend()
         else:
-            plt.plot(orig[i], linewidth=2, linestyle="dotted")
-            plt.plot(recon[i], linewidth=1)
+            plt.plot(orig[i+6], linewidth=2, linestyle="dotted")
+            plt.plot(recon[i+6], linewidth=1)
         
     plt.tight_layout() 
     plt.suptitle("Reconstructions: " + title, y=1.02) 
